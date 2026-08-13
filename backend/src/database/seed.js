@@ -550,7 +550,7 @@ async function main() {
               actualDays: lengthOfStay,
               status: 'CHECKED_OUT',
               initialDiagnosis: 'Historical occupancy for ML training',
-              dischargeCondition: ['RECOVERED', 'IMPROVED', 'STABLE'][Math.floor(Math.random() * 3)],
+              dischargeCondition: ['SEMBUH', 'MEMBAIK', 'RUJUK'][Math.floor(Math.random() * 3)],
               totalRoomCost: room.pricePerDay * lengthOfStay
             }
           });
@@ -565,6 +565,33 @@ async function main() {
     }
     
     console.log('🤖 Historical data generation completed!\n');
+
+    // ========== AUDIT LOGS ==========
+    console.log('📜 Generating sample audit logs...');
+    const auditActions = ['LOGIN', 'CREATE_PATIENT', 'CREATE_VISIT', 'UPDATE_MEDICAL_RECORD', 'ADMIT_INPATIENT', 'DISCHARGE_INPATIENT', 'GENERATE_BILLING', 'PAY_BILLING'];
+    const entities = ['User', 'Patient', 'Visit', 'MedicalRecord', 'RoomOccupancy', 'Billing'];
+
+    for (let i = 0; i < 25; i++) {
+      const user = users[Math.floor(Math.random() * users.length)];
+      const action = auditActions[Math.floor(Math.random() * auditActions.length)];
+      const entity = entities[Math.floor(Math.random() * entities.length)];
+      const randomTime = new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000));
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: action,
+          entity: entity,
+          entityId: Math.floor(Math.random() * 10) + 1,
+          oldData: { status: 'OLD_VALUE' },
+          newData: { status: 'NEW_VALUE', updatedBy: user.email },
+          ipAddress: `192.168.1.${Math.floor(Math.random() * 200) + 1}`,
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          createdAt: randomTime
+        }
+      });
+    }
+    console.log('✅ Generated 25 sample audit logs\n');
 
     console.log('🎉 Database berhasil di-seed!');
     console.log('\n📋 Kredensial Login Default:');
