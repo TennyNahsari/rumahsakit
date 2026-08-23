@@ -134,16 +134,26 @@ const Sidebar = ({ isOpen, onClose }) => {
             <ul className="space-y-2">
               <li>
                 <NavLink
+                  to="/"
+                  onClick={() => onClose()}
+                  className="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 group"
+                >
+                  <Building2 className="w-5 h-5 text-[#0052CC] transition duration-75" />
+                  <span className="ml-3 font-medium text-xs font-semibold text-[#0052CC]">Halaman Landing</span>
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
                   to="/reports"
                   onClick={() => onClose()}
                   className={({ isActive }) =>
                     `flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group ${
-                      isActive ? 'bg-primary-50 text-primary-700 border-r-2 border-primary-600' : ''
+                      isActive ? 'bg-primary-50 text-[#0052CC] border-r-2 border-[#0052CC] font-semibold' : ''
                     }`
                   }
                 >
                   <Activity className="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" />
-                  <span className="ml-3 font-medium">Reports</span>
+                  <span className="ml-3 font-medium">Laporan</span>
                 </NavLink>
               </li>
               <li>
@@ -152,12 +162,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                   onClick={() => onClose()}
                   className={({ isActive }) =>
                     `flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group ${
-                      isActive ? 'bg-primary-50 text-primary-700 border-r-2 border-primary-600' : ''
+                      isActive ? 'bg-primary-50 text-[#0052CC] border-r-2 border-[#0052CC] font-semibold' : ''
                     }`
                   }
                 >
                   <Settings className="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" />
-                  <span className="ml-3 font-medium">Settings</span>
+                  <span className="ml-3 font-medium">Pengaturan</span>
                 </NavLink>
               </li>
             </ul>

@@ -3,6 +3,42 @@ const prisma = require('../database/prisma');
 const bcrypt = require('bcryptjs');
 const XLSX = require('xlsx');
 
+// @desc    Get active doctors for public display
+// @route   GET /api/users/public/doctors
+// @access  Public
+const getPublicDoctors = async (req, res) => {
+  try {
+    const doctors = await prisma.user.findMany({
+      where: {
+        role: 'DOCTOR',
+        isActive: true
+      },
+      orderBy: {
+        id: 'asc'
+      },
+      select: {
+        id: true,
+        name: true,
+        department: true,
+        email: true,
+        phone: true,
+        avatarUrl: true
+      }
+    });
+
+    res.json({
+      success: true,
+      data: { doctors }
+    });
+  } catch (error) {
+    console.error('Get public doctors error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch public doctors'
+    });
+  }
+};
+
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private
@@ -378,6 +414,7 @@ const exportUsersExcel = async (req, res) => {
 };
 
 module.exports = {
+  getPublicDoctors,
   getUsers,
   getUser,
   createUser,

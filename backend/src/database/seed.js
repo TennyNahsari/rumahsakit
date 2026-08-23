@@ -382,23 +382,62 @@ async function main() {
     // Ambil semua data yang sudah dibuat untuk membuat visits
     const doctors = users.filter(u => u.role === 'DOCTOR');
 
+    // Doctor prefix map: doctor index -> 'A', 'B', 'C', 'D'
+    const getDoctorPrefix = (index) => String.fromCharCode(65 + (index % 26));
+
+    // Doctor queue counters
+    const doctorCounters = {};
+    doctors.forEach((doc, idx) => {
+      doctorCounters[doc.id] = {
+        prefix: getDoctorPrefix(idx),
+        seqOnsite: 1,
+        seqWeb: 1,
+        seqIgd: 1
+      };
+    });
+
     // Buat kunjungan pasien
     for (let i = 0; i < 15; i++) {
-      const patient = patients[Math.floor(Math.random() * patients.length)];
-      const doctor = doctors[Math.floor(Math.random() * doctors.length)];
-      const visitTypes = ['OUTPATIENT', 'INPATIENT', 'EMERGENCY'];
-      const visitType = visitTypes[Math.floor(Math.random() * visitTypes.length)];
-      
-      const scheduledAt = new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000));
+      const patient = patients[i % patients.length];
+      const doctorIdx = i % doctors.length;
+      const doctor = doctors[doctorIdx];
+      const docInfo = doctorCounters[doctor.id];
+
+      const visitTypes = ['OUTPATIENT', 'OUTPATIENT', 'EMERGENCY', 'INPATIENT'];
+      const visitType = visitTypes[i % visitTypes.length];
+      const channel = i % 3 === 0 ? 'ONLINE_WEBSITE' : 'ONSITE_LOKET';
+
+      let queuePrefix = docInfo.prefix;
+      let formattedQueue = '';
+
+      if (visitType === 'EMERGENCY') {
+        queuePrefix = `${docInfo.prefix}-IGD`;
+        formattedQueue = `${docInfo.prefix}-IGD-${docInfo.seqIgd++}`;
+      } else if (channel === 'ONLINE_WEBSITE') {
+        queuePrefix = `WEB-${docInfo.prefix}`;
+        formattedQueue = `WEB-${docInfo.prefix}-${docInfo.seqWeb++}`;
+      } else {
+        queuePrefix = docInfo.prefix;
+        formattedQueue = `${docInfo.prefix}-${docInfo.seqOnsite++}`;
+      }
+
+      const scheduledAt = new Date();
+      const statusList = ['SCHEDULED', 'CALLED', 'IN_PROGRESS', 'COMPLETED', 'SCHEDULED'];
+      const status = statusList[i % statusList.length];
       
       const visit = await prisma.visit.create({
         data: {
           patientId: patient.id,
           doctorId: doctor.id,
           visitType: visitType,
+          channel: channel,
+          queuePrefix: queuePrefix,
+          queueNumberFormatted: formattedQueue,
+          queueNumber: formattedQueue,
           scheduledAt: scheduledAt,
-          status: ['SCHEDULED', 'COMPLETED', 'CANCELLED'][Math.floor(Math.random() * 3)],
-          notes: `Kunjungan ${visitType.toLowerCase()} untuk ${patient.name}`
+          status: status,
+          calledAt: status === 'CALLED' || status === 'IN_PROGRESS' || status === 'COMPLETED' ? new Date() : null,
+          notes: `Kunjungan ${visitType.toLowerCase()} (${channel}) untuk ${patient.name}`
         }
       });
 
@@ -456,7 +495,7 @@ async function main() {
         });
       }
 
-      console.log(`✅ Kunjungan dibuat: ${patient.name} - ${visitType}`);
+      console.log(`✅ Kunjungan dibuat: ${patient.name} - Dokter ${docInfo.prefix} (${formattedQueue})`);
     }
 
     // ========== HISTORICAL DATA FOR AI TRAINING ==========

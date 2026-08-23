@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { visitService, patientService, userService } from '../services'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Search, Check, Stethoscope } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const VisitEdit = () => {
@@ -13,11 +13,18 @@ const VisitEdit = () => {
   const [submitting, setSubmitting] = useState(false)
   const [patients, setPatients] = useState([])
   const [doctors, setDoctors] = useState([])
+
+  // Autocomplete states for Doctor
+  const [doctorSearch, setDoctorSearch] = useState('')
+  const [isDoctorOpen, setIsDoctorOpen] = useState(false)
+  const doctorRef = useRef(null)
+  
   const [formData, setFormData] = useState({
     patientId: '',
     doctorId: '',
     visitType: 'GENERAL_CHECKUP',
-    scheduledAt: '',
+    visitDate: '',
+    visitTime: '',
     status: 'SCHEDULED',
     notes: ''
   })
@@ -25,6 +32,17 @@ const VisitEdit = () => {
   useEffect(() => {
     fetchData()
   }, [id])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (doctorRef.current && !doctorRef.current.contains(event.target)) {
+        setIsDoctorOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const fetchData = async () => {
     try {
@@ -35,35 +53,45 @@ const VisitEdit = () => {
         userService.getUsers()
       ])
 
-      console.log('API Responses:', { visitResponse, patientsResponse, usersResponse })
-
-      const visit = visitResponse.data.visit
+      const visit = visitResponse.data?.visit || visitResponse.data
       setPatients(patientsResponse.data.patients || [])
       
-      // Filter doctors from users - handle different response structures
       const usersList = usersResponse?.data?.users || usersResponse?.data || []
-      const doctorsList = usersList.filter(
-        user => user.role === 'DOCTOR'
-      )
+      const doctorsList = usersList.filter(user => user.role === 'DOCTOR')
       setDoctors(doctorsList)
 
-      // Format date for datetime-local input
-      const scheduledDate = new Date(visit.scheduledAt)
-      const formattedDate = new Date(scheduledDate.getTime() - scheduledDate.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16)
+      const activeDoctor = doctorsList.find(d => d.id === visit.doctorId)
+      if (activeDoctor) {
+        setDoctorSearch(`${activeDoctor.name} - ${activeDoctor.department || 'Spesialis'}`)
+      }
+
+      // Parse scheduledAt date and optional time
+      let dateVal = ''
+      let timeVal = ''
+
+      if (visit.scheduledAt) {
+        const d = new Date(visit.scheduledAt)
+        dateVal = d.toISOString().split('T')[0]
+        
+        const hours = String(d.getHours()).padStart(2, '0')
+        const minutes = String(d.getMinutes()).padStart(2, '0')
+        if (hours !== '00' || minutes !== '00') {
+          timeVal = `${hours}:${minutes}`
+        }
+      }
 
       setFormData({
         patientId: visit.patientId,
         doctorId: visit.doctorId,
         visitType: visit.visitType,
-        scheduledAt: formattedDate,
+        visitDate: dateVal || new Date().toISOString().split('T')[0],
+        visitTime: timeVal,
         status: visit.status,
         notes: visit.notes || ''
       })
     } catch (error) {
       console.error('Fetch visit data error:', error)
-      toast.error(t('visits.form.updateFailed'))
+      toast.error(t('visits.form.updateFailed', 'Gagal memuat data kunjungan'))
       navigate('/visits')
     } finally {
       setLoading(false)
@@ -78,15 +106,41 @@ const VisitEdit = () => {
     }))
   }
 
+  const filteredDoctors = doctors.filter(doctor => {
+    const query = doctorSearch.toLowerCase()
+    return (
+      doctor.name.toLowerCase().includes(query) ||
+      (doctor.department && doctor.department.toLowerCase().includes(query))
+    )
+  })
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!formData.visitDate) {
+      toast.error('Tanggal kunjungan tidak boleh kosong')
+      return
+    }
+
     try {
       setSubmitting(true)
-      await visitService.updateVisit(id, formData)
-      toast.success(t('visits.form.updateSuccess'))
-      navigate(`/visits/${id}`)
+      const scheduledAt = formData.visitTime 
+        ? `${formData.visitDate}T${formData.visitTime}` 
+        : formData.visitDate
+
+      const payload = {
+        patientId: formData.patientId,
+        doctorId: formData.doctorId,
+        visitType: formData.visitType,
+        scheduledAt,
+        status: formData.status,
+        notes: formData.notes
+      }
+
+      await visitService.updateVisit(id, payload)
+      toast.success(t('visits.form.updateSuccess', 'Kunjungan berhasil diperbarui'))
+      navigate('/visits')
     } catch (error) {
-      toast.error(error.response?.data?.error || t('visits.form.updateFailed'))
+      toast.error(error.response?.data?.error || t('visits.form.updateFailed', 'Gagal mengedit kunjungan'))
     } finally {
       setSubmitting(false)
     }
@@ -95,7 +149,7 @@ const VisitEdit = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0052CC]"></div>
       </div>
     )
   }
@@ -105,164 +159,246 @@ const VisitEdit = () => {
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button
-          onClick={() => navigate(`/visits/${id}`)}
-          className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+          onClick={() => navigate('/visits')}
+          className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {t('visits.form.back')}
+          {t('visits.form.back', 'Kembali')}
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('visits.form.editTitle')}</h1>
-          <p className="text-gray-600">{t('visits.form.editSubtitle')}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('visits.form.editTitle', 'Edit Kunjungan / Antrean')}</h1>
+          <p className="text-gray-600">{t('visits.form.editSubtitle', 'Perbarui detail antrean atau status kunjungan')}</p>
         </div>
       </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-4">{t('visits.form.visitInfo')}</h2>
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+          <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Informasi Kunjungan</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Patient - Read Only */}
+            {/* Patient - Disabled */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('visits.form.selectPatient')} <span className="text-red-500">*</span>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Pasien <span className="text-red-500">*</span>
               </label>
               <select
                 name="patientId"
                 value={formData.patientId}
                 onChange={handleChange}
-                className="form-input bg-gray-100 cursor-not-allowed"
-                required
+                className="w-full text-xs p-3 rounded-lg border border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed outline-none"
                 disabled
               >
-                <option value="">{t('visits.form.selectPatient')}</option>
                 {patients.map(patient => (
                   <option key={patient.id} value={patient.id}>
-                    {patient.name} - {patient.medicalRecordNo}
+                    {patient.name} ({patient.medicalRecordNo})
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">{t('patients.cannotChangePatient') || 'Patient cannot be changed after schedule is created'}</p>
             </div>
 
-            {/* Doctor */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('visits.form.selectDoctor')} <span className="text-red-500">*</span>
+            {/* Doctor Search Autocomplete */}
+            <div className="relative" ref={doctorRef}>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Dokter DPJP <span className="text-red-500">*</span>
               </label>
-              <select
-                name="doctorId"
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ketik Nama Dokter DPJP / Spesialisasi..."
+                  value={doctorSearch}
+                  onFocus={() => setIsDoctorOpen(true)}
+                  onChange={(e) => {
+                    setDoctorSearch(e.target.value)
+                    setIsDoctorOpen(true)
+                    if (!e.target.value) {
+                      setFormData(prev => ({ ...prev, doctorId: '' }))
+                    }
+                  }}
+                  className={`w-full text-xs p-3 pl-10 pr-10 rounded-lg border ${
+                    formData.doctorId ? 'border-emerald-500 bg-emerald-50/20 font-bold text-emerald-900' : 'border-gray-300 focus:border-[#0052CC]'
+                  } outline-none transition-all`}
+                  required
+                />
+                <Stethoscope className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+
+                {formData.doctorId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, doctorId: '' }))
+                      setDoctorSearch('')
+                      setIsDoctorOpen(true)
+                    }}
+                    className="absolute right-3 top-3 text-xs text-gray-400 hover:text-red-500 font-bold p-1"
+                    title="Reset Pilihan Dokter"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Hidden input to enforce native required validation */}
+              <input
+                type="text"
                 value={formData.doctorId}
-                onChange={handleChange}
-                className="form-input"
+                onChange={() => {}}
                 required
-              >
-                <option value="">{t('visits.form.selectDoctor')}</option>
-                {doctors.map(doctor => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.name} - {doctor.department}
-                  </option>
-                ))}
-              </select>
+                tabIndex={-1}
+                className="opacity-0 absolute bottom-0 left-0 w-full h-0 pointer-events-none"
+              />
+
+              {/* Dropdown Menu */}
+              {isDoctorOpen && (
+                <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 animate-in fade-in duration-150">
+                  {filteredDoctors.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500">
+                      Tidak ada dokter ditemukan untuk &quot;<span className="font-bold">{doctorSearch}</span>&quot;
+                    </div>
+                  ) : (
+                    filteredDoctors.map(doctor => {
+                      const isSelected = String(formData.doctorId) === String(doctor.id)
+                      return (
+                        <button
+                          key={doctor.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, doctorId: doctor.id }))
+                            setDoctorSearch(`${doctor.name} - ${doctor.department || 'Spesialis'}`)
+                            setIsDoctorOpen(false)
+                          }}
+                          className={`w-full text-left p-3 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between ${
+                            isSelected ? 'bg-blue-50/80 font-bold text-[#0052CC]' : 'text-gray-800'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-bold text-gray-900 text-xs">
+                              {doctor.name}
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              🩺 Spesialisasi: {doctor.department || 'Poliklinik Spesialis'}
+                            </div>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-[#0052CC]" />}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Schedule Type */}
+            {/* Visit Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('visits.form.visitType')} <span className="text-red-500">*</span>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Tipe Kunjungan <span className="text-red-500">*</span>
               </label>
               <select
                 name="visitType"
                 value={formData.visitType}
                 onChange={handleChange}
-                className="form-input"
+                className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white"
                 required
               >
-                <option value="GENERAL_CHECKUP">{t('visits.visitType.generalCheckup')}</option>
-                <option value="OUTPATIENT">{t('visits.visitType.outpatient')}</option>
-                <option value="INPATIENT">{t('visits.visitType.inpatient')}</option>
-                <option value="EMERGENCY">{t('visits.visitType.emergency')}</option>
-                <option value="MEDICAL_ACTION">{t('visits.visitType.medicalAction')}</option>
+                <option value="GENERAL_CHECKUP">Pemeriksaan Umum</option>
+                <option value="OUTPATIENT">Rawat Jalan (Poliklinik)</option>
+                <option value="INPATIENT">Rawat Inap</option>
+                <option value="EMERGENCY">IGD (Gawat Darurat)</option>
+                <option value="MEDICAL_ACTION">Tindakan Medis</option>
               </select>
             </div>
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('visits.detail.status')} <span className="text-red-500">*</span>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Status Antrean <span className="text-red-500">*</span>
               </label>
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="form-input"
+                className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white"
                 required
               >
-                <option value="SCHEDULED">{t('visits.status.scheduled')}</option>
-                <option value="IN_PROGRESS">{t('visits.status.inProgress')}</option>
-                <option value="COMPLETED">{t('visits.status.completed')}</option>
-                <option value="CANCELLED">{t('visits.status.cancelled')}</option>
-                <option value="NO_SHOW">{t('visits.status.noShow')}</option>
+                <option value="SCHEDULED">Menunggu (Scheduled)</option>
+                <option value="CALLED">Dipanggil 🔊</option>
+                <option value="IN_PROGRESS">Sedang Diperiksa 🩺</option>
+                <option value="COMPLETED">Selesai ✅</option>
+                <option value="SKIPPED">Dilewati ⏩</option>
+                <option value="CANCELLED">Batal</option>
               </select>
             </div>
 
-            {/* Scheduled Date & Time */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('visits.form.scheduledDateTime')} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                name="scheduledAt"
-                value={formData.scheduledAt}
-                onChange={handleChange}
-                className="form-input"
-                required
-              />
+            {/* Tanggal Kunjungan (Wajib) & Jam Kunjungan (Opsional) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              <div>
+                <label className="block text-xs font-bold text-gray-800 mb-1">
+                  Tanggal Kunjungan <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  name="visitDate"
+                  value={formData.visitDate}
+                  onChange={handleChange}
+                  className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white"
+                  required
+                />
+                <p className="text-[10px] text-gray-500 mt-1">Wajib diisi (tidak boleh kosong).</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-800 mb-1">
+                  Jam Kunjungan <span className="text-gray-400 font-normal">(Opsional)</span>
+                </label>
+                <input
+                  type="time"
+                  name="visitTime"
+                  value={formData.visitTime}
+                  onChange={handleChange}
+                  className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">Bisa dikosongkan jika tidak ada jam spesifik.</p>
+              </div>
             </div>
 
             {/* Notes */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('visits.form.notes')}
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Catatan / Keluhan Pasien
               </label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleChange}
-                rows="4"
-                className="form-input"
-                placeholder={t('visits.form.notesPlaceholder')}
+                rows="3"
+                className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none"
+                placeholder="Catatan pendaftaran atau keluhan..."
               />
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
+        {/* Submit Buttons */}
+        <div className="flex justify-end space-x-3">
           <button
             type="button"
-            onClick={() => navigate(`/visits/${id}`)}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={submitting}
+            onClick={() => navigate('/visits')}
+            className="px-5 py-2.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-600 hover:bg-gray-50"
           >
-            {t('common.cancel')}
+            {t('common.cancel', 'Batal')}
           </button>
           <button
             type="submit"
-            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-primary-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={submitting}
+            className="px-6 py-2.5 rounded-lg bg-[#0052CC] text-white text-xs font-bold hover:bg-blue-700 transition-all flex items-center space-x-2 disabled:opacity-50"
           >
             {submitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                {t('visits.form.saving')}
-              </>
+              <span>Menyimpan...</span>
             ) : (
               <>
-                <Save className="w-4 h-4 mr-2" />
-                {t('visits.form.updateButton')}
+                <Save className="w-4 h-4" />
+                <span>Simpan Perubahan</span>
               </>
             )}
           </button>

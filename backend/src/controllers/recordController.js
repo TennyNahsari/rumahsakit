@@ -10,9 +10,37 @@ const getRecords = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
-    const patientId = req.query.patientId;
+    const { patientId, patientName, search, startDate, endDate } = req.query;
 
-    const where = patientId ? { patientId: parseInt(patientId) } : {};
+    const where = {};
+
+    if (patientId) {
+      where.patientId = parseInt(patientId);
+    }
+
+    const searchQuery = patientName || search;
+    if (searchQuery) {
+      where.patient = {
+        name: {
+          contains: searchQuery,
+          mode: 'insensitive'
+        }
+      };
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        const s = new Date(startDate);
+        s.setHours(0, 0, 0, 0);
+        where.createdAt.gte = s;
+      }
+      if (endDate) {
+        const e = new Date(endDate);
+        e.setHours(23, 59, 59, 999);
+        where.createdAt.lte = e;
+      }
+    }
 
     const [records, total] = await Promise.all([
       prisma.medicalRecord.findMany({
@@ -340,17 +368,35 @@ const deleteRecord = async (req, res) => {
 // @access  Private
 const exportRecordsExcel = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { patientId, patientName, search, startDate, endDate } = req.query;
 
-    // Build where clause for date filtering
+    // Build where clause for filtering
     const where = {};
+    if (patientId) {
+      where.patientId = parseInt(patientId);
+    }
+
+    const searchQuery = patientName || search;
+    if (searchQuery) {
+      where.patient = {
+        name: {
+          contains: searchQuery,
+          mode: 'insensitive'
+        }
+      };
+    }
+
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
-        where.createdAt.gte = new Date(startDate);
+        const s = new Date(startDate);
+        s.setHours(0, 0, 0, 0);
+        where.createdAt.gte = s;
       }
       if (endDate) {
-        where.createdAt.lte = new Date(endDate);
+        const e = new Date(endDate);
+        e.setHours(23, 59, 59, 999);
+        where.createdAt.lte = e;
       }
     }
 

@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const { auth, authorize } = require('../middleware/authMiddleware');
 const {
+  getPublicDoctors,
   getUsers,
   getUser,
   createUser,
@@ -11,6 +12,11 @@ const {
 } = require('../controllers/userController');
 
 const router = express.Router();
+
+// @route   GET /api/users/public/doctors
+// @desc    Get active doctors for public display
+// @access  Public
+router.get('/public/doctors', getPublicDoctors);
 
 // @route   GET /api/users/export/excel
 // @desc    Export all users to Excel

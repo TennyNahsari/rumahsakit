@@ -8,16 +8,24 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#e6f0ff',
+          100: '#cce0ff',
+          200: '#99c2ff',
+          300: '#66a3ff',
+          400: '#3385ff',
+          500: '#0066ff',
+          600: '#0052cc', // Royal Blue Primary (MediSyst Brief)
+          700: '#003d99',
+          800: '#002966',
+          900: '#001433',
+        },
+        clinical: {
+          surface: '#F8F9FB',
+          container: '#FFFFFF',
+          onSurface: '#1A1C1E',
+          outline: '#D9DADC',
+          muted: '#64748B',
+          accent: '#0052CC',
         },
         success: {
           50: '#f0fdf4',

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { recordService, patientService, visitService, userService } from '../services'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Search, Check, Calendar, Stethoscope, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const RecordForm = () => {
@@ -13,6 +13,22 @@ const RecordForm = () => {
   const [patients, setPatients] = useState([])
   const [visits, setVisits] = useState([])
   const [doctors, setDoctors] = useState([])
+
+  // Autocomplete states for Patient
+  const [patientSearch, setPatientSearch] = useState('')
+  const [isPatientOpen, setIsPatientOpen] = useState(false)
+  const patientRef = useRef(null)
+
+  // Autocomplete states for Visit
+  const [visitSearch, setVisitSearch] = useState('')
+  const [isVisitOpen, setIsVisitOpen] = useState(false)
+  const visitRef = useRef(null)
+
+  // Autocomplete states for Doctor
+  const [doctorSearch, setDoctorSearch] = useState('')
+  const [isDoctorOpen, setIsDoctorOpen] = useState(false)
+  const doctorRef = useRef(null)
+
   const [formData, setFormData] = useState({
     visitId: '',
     patientId: '',
@@ -28,6 +44,17 @@ const RecordForm = () => {
     fetchData()
   }, [])
 
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (patientRef.current && !patientRef.current.contains(e.target)) setIsPatientOpen(false)
+      if (visitRef.current && !visitRef.current.contains(e.target)) setIsVisitOpen(false)
+      if (doctorRef.current && !doctorRef.current.contains(e.target)) setIsDoctorOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const fetchData = async () => {
     try {
       setLoading(true)
@@ -40,7 +67,6 @@ const RecordForm = () => {
       setPatients(patientsResponse.data.patients || [])
       setVisits(visitsResponse.data.visits || [])
       
-      // Filter doctors from users
       const usersList = usersResponse?.data?.users || usersResponse?.data || []
       const doctorsList = usersList.filter(user => user.role === 'DOCTOR')
       setDoctors(doctorsList)
@@ -60,33 +86,91 @@ const RecordForm = () => {
     }))
   }
 
-  const handlePatientChange = (e) => {
-    const patientId = parseInt(e.target.value)
+  // Filtered lists for Autocomplete
+  const filteredPatients = patients.filter(p => {
+    const query = patientSearch.toLowerCase()
+    return p.name.toLowerCase().includes(query) || (p.medicalRecordNo && p.medicalRecordNo.toLowerCase().includes(query))
+  })
+
+  const availableVisits = formData.patientId 
+    ? visits.filter(v => v.patientId === formData.patientId)
+    : visits
+
+  const filteredVisits = availableVisits.filter(v => {
+    const query = visitSearch.toLowerCase()
+    const qNo = (v.queueNumberFormatted || v.queueNumber || '').toLowerCase()
+    const pName = (v.patient?.name || '').toLowerCase()
+    const typeStr = (v.visitType || '').toLowerCase()
+    return qNo.includes(query) || pName.includes(query) || typeStr.includes(query) || String(v.id).includes(query)
+  })
+
+  const filteredDoctors = doctors.filter(d => {
+    const query = doctorSearch.toLowerCase()
+    return d.name.toLowerCase().includes(query) || (d.department && d.department.toLowerCase().includes(query))
+  })
+
+  const selectPatient = (patient) => {
     setFormData(prev => ({
       ...prev,
-      patientId: patientId,
+      patientId: patient.id,
       visitId: '' // Reset visit when patient changes
     }))
+    setPatientSearch(`${patient.name} (${patient.medicalRecordNo})`)
+    setVisitSearch('')
+    setIsPatientOpen(false)
   }
 
-  const handleVisitChange = (e) => {
-    const visitId = parseInt(e.target.value)
-    const selectedVisit = visits.find(v => v.id === visitId)
-    
+  const selectVisit = (visit) => {
+    const selectedPatient = patients.find(p => p.id === visit.patientId)
+    const selectedDoctor = doctors.find(d => d.id === visit.doctorId)
+
     setFormData(prev => ({
       ...prev,
-      visitId: visitId,
-      patientId: selectedVisit?.patientId || prev.patientId,
-      doctorId: selectedVisit?.doctorId || prev.doctorId
+      visitId: visit.id,
+      patientId: visit.patientId,
+      doctorId: visit.doctorId || prev.doctorId
     }))
+
+    if (selectedPatient) {
+      setPatientSearch(`${selectedPatient.name} (${selectedPatient.medicalRecordNo})`)
+    }
+    if (selectedDoctor) {
+      setDoctorSearch(`${selectedDoctor.name} - ${selectedDoctor.department || 'Spesialis'}`)
+    }
+
+    const dateStr = new Date(visit.scheduledAt).toLocaleDateString('id-ID')
+    const qNo = visit.queueNumberFormatted || visit.queueNumber || `Antrean #${visit.id}`
+    setVisitSearch(`${qNo} • ${dateStr} (${visit.visitType})`)
+    setIsVisitOpen(false)
+  }
+
+  const selectDoctor = (doctor) => {
+    setFormData(prev => ({
+      ...prev,
+      doctorId: doctor.id
+    }))
+    setDoctorSearch(`${doctor.name} - ${doctor.department || 'Spesialis'}`)
+    setIsDoctorOpen(false)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!formData.patientId) {
+      toast.error('Silakan pilih Pasien dari pencarian terlebih dahulu')
+      return
+    }
+    if (!formData.visitId) {
+      toast.error('Silakan pilih Kunjungan dari pencarian terlebih dahulu')
+      return
+    }
+    if (!formData.doctorId) {
+      toast.error('Silakan pilih Dokter DPJP dari pencarian terlebih dahulu')
+      return
+    }
+
     try {
       setSubmitting(true)
       
-      // Prepare data
       const submitData = {
         visitId: parseInt(formData.visitId),
         patientId: parseInt(formData.patientId),
@@ -109,15 +193,10 @@ const RecordForm = () => {
     }
   }
 
-  // Filter visits by selected patient
-  const filteredVisits = formData.patientId 
-    ? visits.filter(v => v.patientId === formData.patientId)
-    : visits
-
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0052CC]"></div>
       </div>
     )
   }
@@ -128,7 +207,7 @@ const RecordForm = () => {
       <div className="flex items-center space-x-4">
         <button
           onClick={() => navigate('/records')}
-          className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           {t('records.form.back')}
@@ -141,75 +220,243 @@ const RecordForm = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-4">{t('records.form.visitInfo')}</h2>
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+          <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">{t('records.form.visitInfo')}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Patient */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            
+            {/* 1. Patient Autocomplete */}
+            <div className="relative" ref={patientRef}>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 {t('records.form.patient')} <span className="text-red-500">*</span>
               </label>
-              <select
-                name="patientId"
-                value={formData.patientId}
-                onChange={handlePatientChange}
-                className="input"
-                required
-              >
-                <option value="">{t('records.form.selectPatient')}</option>
-                {patients.map(patient => (
-                  <option key={patient.id} value={patient.id}>
-                    {patient.name} - {patient.medicalRecordNo}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            {/* Visit */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('records.form.visit')} <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="visitId"
-                value={formData.visitId}
-                onChange={handleVisitChange}
-                className="input"
-                required
-                disabled={!formData.patientId}
-              >
-                <option value="">{t('records.form.selectVisit')}</option>
-                {filteredVisits.map(visit => (
-                  <option key={visit.id} value={visit.id}>
-                    {new Date(visit.scheduledAt).toLocaleDateString(i18n.language === 'id' ? 'id-ID' : 'en-US')} - {visit.visitType}
-                  </option>
-                ))}
-              </select>
-              {!formData.patientId && (
-                <p className="text-sm text-gray-500 mt-1">{t('records.form.selectPatientFirst')}</p>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ketik Nama Pasien / No. RM..."
+                  value={patientSearch}
+                  onFocus={() => setIsPatientOpen(true)}
+                  onChange={(e) => {
+                    setPatientSearch(e.target.value)
+                    setIsPatientOpen(true)
+                    if (!e.target.value) setFormData(prev => ({ ...prev, patientId: '', visitId: '' }))
+                  }}
+                  className={`w-full text-xs p-3 pl-10 pr-10 rounded-lg border ${
+                    formData.patientId ? 'border-emerald-500 bg-emerald-50/20 font-bold text-emerald-900' : 'border-gray-300 focus:border-[#0052CC]'
+                  } outline-none transition-all`}
+                  required
+                />
+                <User className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+
+                {formData.patientId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, patientId: '', visitId: '' }))
+                      setPatientSearch('')
+                      setVisitSearch('')
+                      setIsPatientOpen(true)
+                    }}
+                    className="absolute right-3 top-3 text-xs text-gray-400 hover:text-red-500 font-bold p-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Patient Dropdown */}
+              {isPatientOpen && (
+                <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 animate-in fade-in duration-150">
+                  {filteredPatients.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500">
+                      Tidak ada pasien ditemukan untuk &quot;<span className="font-bold">{patientSearch}</span>&quot;
+                    </div>
+                  ) : (
+                    filteredPatients.map(patient => {
+                      const isSelected = String(formData.patientId) === String(patient.id)
+                      return (
+                        <button
+                          key={patient.id}
+                          type="button"
+                          onClick={() => selectPatient(patient)}
+                          className={`w-full text-left p-3 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between ${
+                            isSelected ? 'bg-blue-50/80 font-bold text-[#0052CC]' : 'text-gray-800'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-bold text-gray-900 text-xs flex items-center space-x-2">
+                              <span>{patient.name}</span>
+                              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 font-mono text-[10px] rounded border border-gray-200">
+                                RM: {patient.medicalRecordNo}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              {patient.gender === 'MALE' ? '👨 Laki-laki' : '👩 Perempuan'}
+                            </div>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-[#0052CC]" />}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Doctor */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* 2. Visit Autocomplete */}
+            <div className="relative" ref={visitRef}>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                {t('records.form.visit')} <span className="text-red-500">*</span>
+              </label>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ketik No. Antrean / Tanggal / Tipe Kunjungan..."
+                  value={visitSearch}
+                  onFocus={() => setIsVisitOpen(true)}
+                  onChange={(e) => {
+                    setVisitSearch(e.target.value)
+                    setIsVisitOpen(true)
+                    if (!e.target.value) setFormData(prev => ({ ...prev, visitId: '' }))
+                  }}
+                  className={`w-full text-xs p-3 pl-10 pr-10 rounded-lg border ${
+                    formData.visitId ? 'border-emerald-500 bg-emerald-50/20 font-bold text-emerald-900' : 'border-gray-300 focus:border-[#0052CC]'
+                  } outline-none transition-all`}
+                  required
+                />
+                <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+
+                {formData.visitId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, visitId: '' }))
+                      setVisitSearch('')
+                      setIsVisitOpen(true)
+                    }}
+                    className="absolute right-3 top-3 text-xs text-gray-400 hover:text-red-500 font-bold p-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Visit Dropdown */}
+              {isVisitOpen && (
+                <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 animate-in fade-in duration-150">
+                  {filteredVisits.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500">
+                      Tidak ada kunjungan ditemukan
+                    </div>
+                  ) : (
+                    filteredVisits.map(visit => {
+                      const isSelected = String(formData.visitId) === String(visit.id)
+                      const qNo = visit.queueNumberFormatted || visit.queueNumber || `Antrean #${visit.id}`
+                      const dateStr = new Date(visit.scheduledAt).toLocaleDateString('id-ID')
+                      return (
+                        <button
+                          key={visit.id}
+                          type="button"
+                          onClick={() => selectVisit(visit)}
+                          className={`w-full text-left p-3 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between ${
+                            isSelected ? 'bg-blue-50/80 font-bold text-[#0052CC]' : 'text-gray-800'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-bold text-gray-900 text-xs flex items-center space-x-2">
+                              <span className="px-1.5 py-0.5 bg-blue-100 text-[#0052CC] font-bold rounded">
+                                {qNo}
+                              </span>
+                              <span>{visit.patient?.name || 'Pasien'}</span>
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-1">
+                              📅 {dateStr} • Tipe: <span className="font-semibold text-gray-700">{visit.visitType}</span>
+                            </div>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-[#0052CC]" />}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 3. Doctor Autocomplete */}
+            <div className="relative" ref={doctorRef}>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 {t('records.form.doctor')} <span className="text-red-500">*</span>
               </label>
-              <select
-                name="doctorId"
-                value={formData.doctorId}
-                onChange={handleChange}
-                className="input"
-                required
-              >
-                <option value="">{t('records.form.selectDoctor')}</option>
-                {doctors.map(doctor => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.name} - {doctor.department || 'Umum'}
-                  </option>
-                ))}
-              </select>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ketik Nama Dokter DPJP..."
+                  value={doctorSearch}
+                  onFocus={() => setIsDoctorOpen(true)}
+                  onChange={(e) => {
+                    setDoctorSearch(e.target.value)
+                    setIsDoctorOpen(true)
+                    if (!e.target.value) setFormData(prev => ({ ...prev, doctorId: '' }))
+                  }}
+                  className={`w-full text-xs p-3 pl-10 pr-10 rounded-lg border ${
+                    formData.doctorId ? 'border-emerald-500 bg-emerald-50/20 font-bold text-emerald-900' : 'border-gray-300 focus:border-[#0052CC]'
+                  } outline-none transition-all`}
+                  required
+                />
+                <Stethoscope className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+
+                {formData.doctorId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, doctorId: '' }))
+                      setDoctorSearch('')
+                      setIsDoctorOpen(true)
+                    }}
+                    className="absolute right-3 top-3 text-xs text-gray-400 hover:text-red-500 font-bold p-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Doctor Dropdown */}
+              {isDoctorOpen && (
+                <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 animate-in fade-in duration-150">
+                  {filteredDoctors.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500">
+                      Tidak ada dokter ditemukan
+                    </div>
+                  ) : (
+                    filteredDoctors.map(doctor => {
+                      const isSelected = String(formData.doctorId) === String(doctor.id)
+                      return (
+                        <button
+                          key={doctor.id}
+                          type="button"
+                          onClick={() => selectDoctor(doctor)}
+                          className={`w-full text-left p-3 text-xs hover:bg-blue-50 transition-colors flex items-center justify-between ${
+                            isSelected ? 'bg-blue-50/80 font-bold text-[#0052CC]' : 'text-gray-800'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-bold text-gray-900 text-xs">
+                              {doctor.name}
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              🩺 Spesialisasi: {doctor.department || 'Poliklinik Spesialis'}
+                            </div>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-[#0052CC]" />}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Diagnosis Code */}

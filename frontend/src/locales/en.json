@@ -181,19 +181,45 @@
     }
   },
   "visits": {
-    "title": "Patient Visits",
-    "subtitle": "Manage patient visits and schedules",
-    "addVisit": "Add Visit",
+    "title": "Patient Visits & Queue Management",
+    "subtitle": "Precision queue management per doctor, website registration priority, and queue calling operations.",
+    "addVisit": "Add Visit / Desk",
     "scheduleVisit": "Schedule Visit",
-    "exportData": "Export Data",
+    "exportData": "Export Excel",
+    "openTvDisplay": "Open TV Queue Display",
     "deleteConfirm": "Are you sure you want to delete this visit?",
     "deleteSuccess": "Visit deleted successfully",
     "deleteFailed": "Failed to delete visit",
-    "fetchFailed": "Failed to fetch visits",
-    "exportSuccess": "Data exported successfully",
+    "fetchFailed": "Failed to fetch visits data",
+    "exportSuccess": "Visits data exported successfully",
     "exportFailed": "Failed to export data",
     "exporting": "Exporting data...",
     "selectDateRange": "Please select start and end dates",
+    "sortBy": "Sort By:",
+    "sortNewest": "Latest Visit Date (Desc)",
+    "sortOldest": "Earliest Visit Date (Asc)",
+    "sortQueue": "Queue Number",
+    "tabs": {
+      "all": "All Visits",
+      "scheduled": "Waiting",
+      "webPriority": "Patient Web Priority",
+      "emergency": "ER / Emergency",
+      "called": "Called",
+      "inProgress": "In Consultation"
+    },
+    "channel": {
+      "web": "PATIENT WEB",
+      "loket": "COUNTER ADMISSION"
+    },
+    "actions": {
+      "call": "Call",
+      "recall": "Recall",
+      "start": "Examine",
+      "complete": "Complete",
+      "skip": "Skip",
+      "printTicket": "Print EPOS Ticket",
+      "delete": "Delete"
+    },
     "filters": {
       "startDate": "Start Date",
       "endDate": "End Date",
@@ -201,25 +227,28 @@
       "allStatuses": "All Statuses"
     },
     "status": {
-      "scheduled": "Scheduled",
-      "inProgress": "In Progress",
-      "completed": "Completed",
+      "scheduled": "Waiting",
+      "called": "Called 🔊",
+      "inProgress": "In Consultation 🩺",
+      "completed": "Completed ✅",
+      "skipped": "Skipped ⏩",
       "cancelled": "Cancelled",
       "noShow": "No Show"
     },
     "visitType": {
       "outpatient": "Outpatient",
       "inpatient": "Inpatient",
-      "emergency": "Emergency",
+      "emergency": "ER (Emergency)",
       "generalCheckup": "General Checkup",
       "medicalAction": "Medical Action"
     },
     "table": {
-      "patientName": "Patient Name",
-      "doctorName": "Doctor Name",
-      "visitType": "Visit Type",
-      "scheduledAt": "Scheduled At",
-      "status": "Status",
+      "queueNo": "Queue No.",
+      "channel": "Channel",
+      "patientName": "Patient & MRN",
+      "doctorName": "Attending Doctor",
+      "visitType": "Type & Date",
+      "status": "Queue Status",
       "actions": "Actions"
     },
     "form": {
@@ -888,5 +917,94 @@
     "viewAllRooms": "View All Rooms",
     "viewInpatients": "View Inpatients",
     "viewReports": "View Reports"
+  },
+  "landing": {
+    "nav": {
+      "about": "About Us",
+      "services": "Medical Services",
+      "doctors": "Doctor Schedule",
+      "facilities": "Inpatient Wards",
+      "journey": "Patient Guide",
+      "contact": "24/7 Emergency",
+      "portal": "Staff Portal",
+      "dashboard": "Staff Portal / Dashboard",
+      "book": "Book Appointment"
+    },
+    "hero": {
+      "badge": "Accredited Hospital • Integrated Medical Care & Ministry Standards",
+      "titlePart1": "Precision & Comprehensive Healthcare.",
+      "titlePart2": "Prioritizing Patient Recovery.",
+      "subtitle": "MediSyst Hospital offers experienced medical specialists, 24-hour laboratory & radiology, modern inpatient rooms, and seamless BPJS & Insurance registration without long queues.",
+      "bookCta": "Book Doctor Online",
+      "igdHotline": "24/7 Emergency Hotline: (021) 555-9999",
+      "stat1": "24/7",
+      "stat1Label": "Emergency & Ambulance On Call",
+      "stat2": "35+ Doctors",
+      "stat2Label": "Specialists & Sub-Specialists",
+      "stat3": "Grade A Accredited",
+      "stat3Label": "Comprehensive Quality Standard",
+      "stat4": "BPJS & Cashless",
+      "stat4Label": "Complete Insurance Network"
+    },
+    "services": {
+      "badge": "Medical Services & Clinics",
+      "title": "MediSyst Hospital Centers of Excellence",
+      "subtitle": "Each specialty clinic is staffed by experienced doctors using advanced medical equipment and precision diagnostics.",
+      "bookConsultation": "Book Consultation"
+    },
+    "doctors": {
+      "badge": "Specialist Doctors",
+      "title": "Senior Specialists at MediSyst Hospital",
+      "subtitle": "Dedicated to providing compassionate medical care with modern treatment technology.",
+      "schedule": "Clinic Hours:",
+      "book": "Book Appointment"
+    },
+    "facilities": {
+      "badge": "Inpatient Wards",
+      "title": "Comfortable & Hygienic Inpatient Care Facilities",
+      "subtitle": "Multiple room options maintaining high cleanliness standards and 24-hour nursing supervision.",
+      "info": "Room Admission Info"
+    },
+    "journey": {
+      "badge": "Patient Care Journey",
+      "title": "Patient Guide at MediSyst Hospital",
+      "subtitle": "Structured care flow from online registration to discharge without administrative delays.",
+      "bpjsSync": "BPJS & HIS Integration"
+    },
+    "testimonials": {
+      "badge": "Patient Reviews",
+      "title": "Patient Trust & Satisfaction is Our Pride"
+    },
+    "emergency": {
+      "badge": "24/7 Emergency Department & Ambulance",
+      "title": "Medical Emergency? Call MediSyst Emergency Team",
+      "subtitle": "Fast-response emergency care, medical ambulance dispatch, and certified resuscitation doctors on duty 24/7.",
+      "hotlineTitle": "24/7 Emergency Hotline",
+      "waInfo": "WhatsApp Booking: 0812-9988-7766",
+      "bookCta": "Book Clinic Online"
+    },
+    "footer": {
+      "tagline": "Integrated General Hospital delivering comprehensive medical care with patient safety as top priority.",
+      "address": "88 Health Main Street, South Jakarta",
+      "clinicsTitle": "Specialty Clinics",
+      "insuranceTitle": "Insurance Partners",
+      "contactTitle": "MediSyst Hospital Contact",
+      "rights": "MediSyst Hospital. All rights reserved."
+    },
+    "modal": {
+      "title": "Doctor Appointment Registration",
+      "subtitle": "Register online at MediSyst Hospital without waiting in line.",
+      "patientName": "Patient Full Name *",
+      "phone": "WhatsApp / Phone Number *",
+      "poly": "Specialty Clinic *",
+      "doctor": "Specialist Doctor *",
+      "date": "Visit Date *",
+      "paymentType": "Payment Type *",
+      "complaint": "Brief Complaint (Optional)",
+      "cancel": "Cancel",
+      "submit": "Confirm Online Booking",
+      "submitting": "Registering...",
+      "successMsg": "Appointment Registered Successfully! Confirmation sent to your WhatsApp."
+    }
   }
 }

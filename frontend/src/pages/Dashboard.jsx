@@ -190,12 +190,30 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="border-b border-gray-200 pb-5">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          {t('dashboard.welcome')}, {user?.name}! ({user?.role})
-        </p>
+      {/* Header Banner */}
+      <div className="bg-[#0052CC] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold mb-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>MediSyst HMS • SIMRS Terpusat</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              Selamat Datang, {user?.name || 'Dokter/Pengguna'}!
+            </h1>
+            <p className="mt-1 text-sm text-blue-100 font-medium">
+              Role: <span className="uppercase font-bold bg-blue-900/50 px-2.5 py-0.5 rounded text-white">{user?.role}</span> • Sistem informasi operasional medis & bangsal rawat inap berjalan normal.
+            </p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => window.location.href = '/'}
+              className="px-4 py-2 bg-white text-[#0052CC] font-bold text-xs rounded-lg hover:bg-blue-50 transition-all shadow-sm"
+            >
+              Halaman Landing
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid */}

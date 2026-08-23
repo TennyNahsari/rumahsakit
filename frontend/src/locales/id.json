@@ -183,19 +183,45 @@
     }
   },
   "visits": {
-    "title": "Kunjungan Pasien",
-    "subtitle": "Kelola data kunjungan dan jadwal pasien",
-    "addVisit": "Tambah Kunjungan",
+    "title": "Daftar Kunjungan & Antrean Pasien",
+    "subtitle": "Manajemen antrean presisi per dokter, prioritas pendaftaran website, dan operasional panggilan.",
+    "addVisit": "Tambah Kunjungan / Loket",
     "scheduleVisit": "Jadwalkan Kunjungan",
-    "exportData": "Ekspor Data",
+    "exportData": "Ekspor Excel",
+    "openTvDisplay": "Buka Layar TV Antrean Publik",
     "deleteConfirm": "Apakah Anda yakin ingin menghapus kunjungan ini?",
     "deleteSuccess": "Kunjungan berhasil dihapus",
     "deleteFailed": "Gagal menghapus kunjungan",
     "fetchFailed": "Gagal memuat data kunjungan",
-    "exportSuccess": "Data berhasil diekspor",
+    "exportSuccess": "Data kunjungan berhasil diekspor",
     "exportFailed": "Gagal mengekspor data",
     "exporting": "Mengekspor data...",
     "selectDateRange": "Silakan pilih tanggal mulai dan tanggal akhir",
+    "sortBy": "Urutkan:",
+    "sortNewest": "Tanggal Kunjungan Terbaru (Desc)",
+    "sortOldest": "Tanggal Kunjungan Terlama (Asc)",
+    "sortQueue": "Nomor Antrean",
+    "tabs": {
+      "all": "Semua Kunjungan",
+      "scheduled": "Menunggu",
+      "webPriority": "Prioritas Web Pasien",
+      "emergency": "IGD / Darurat",
+      "called": "Dipanggil",
+      "inProgress": "Sedang Diperiksa"
+    },
+    "channel": {
+      "web": "WEB PASIEN",
+      "loket": "LOKET ADMISI"
+    },
+    "actions": {
+      "call": "Panggil",
+      "recall": "Panggil Ulang",
+      "start": "Periksa",
+      "complete": "Selesai",
+      "skip": "Lewati",
+      "printTicket": "Cetak Struk EPOS",
+      "delete": "Hapus"
+    },
     "filters": {
       "startDate": "Tanggal Mulai",
       "endDate": "Tanggal Akhir",
@@ -203,26 +229,29 @@
       "allStatuses": "Semua Status"
     },
     "status": {
-      "scheduled": "Terjadwal",
-      "inProgress": "Berlangsung",
-      "completed": "Selesai",
+      "scheduled": "Menunggu",
+      "called": "Dipanggil 🔊",
+      "inProgress": "Sedang Diperiksa 🩺",
+      "completed": "Selesai ✅",
+      "skipped": "Dilewati ⏩",
       "cancelled": "Dibatalkan",
       "noShow": "Tidak Hadir"
     },
     "visitType": {
       "outpatient": "Rawat Jalan",
       "inpatient": "Rawat Inap",
-      "emergency": "Darurat",
+      "emergency": "IGD (Darurat)",
       "generalCheckup": "Pemeriksaan Umum",
       "medicalAction": "Tindakan Medis"
     },
     "table": {
-      "patientName": "Nama Pasien",
-      "doctorName": "Nama Dokter",
-      "visitType": "Jenis Kunjungan",
-      "scheduledAt": "Waktu Jadwal",
-      "status": "Status",
-      "actions": "Aksi"
+      "queueNo": "No. Antrean",
+      "channel": "Saluran",
+      "patientName": "Pasien & No. RM",
+      "doctorName": "Dokter DPJP",
+      "visitType": "Tipe & Tanggal",
+      "status": "Status Antrean",
+      "actions": "Aksi Operasional"
     },
     "form": {
       "title": "Jadwalkan Kunjungan Baru",
@@ -890,5 +919,94 @@
     "viewAllRooms": "Lihat Semua Kamar",
     "viewInpatients": "Lihat Pasien Rawat Inap",
     "viewReports": "Lihat Laporan"
+  },
+  "landing": {
+    "nav": {
+      "about": "Tentang Kami",
+      "services": "Layanan Medis",
+      "doctors": "Jadwal Dokter",
+      "facilities": "Kamar Rawat Inap",
+      "journey": "Alur Pasien",
+      "contact": "Kontak IGD 24H",
+      "portal": "Portal Staff",
+      "dashboard": "Portal Staff / Dashboard",
+      "book": "Buat Janji Dokter"
+    },
+    "hero": {
+      "badge": "Rumah Sakit Paripurna • Layanan Medis Terpadu & Standar Kemenkes",
+      "titlePart1": "Pelayanan Kesehatan Presisi & Komprehensif.",
+      "titlePart2": "Utamakan Kesembuhan Pasien.",
+      "subtitle": "Rumah Sakit MediSyst menghadirkan dokter spesialis berpengalaman, fasilitas laboratorium & radiologi 24 jam, kamar rawat inap modern, serta kenyamanan pendaftaran BPJS & Asuransi tanpa antrean panjang.",
+      "bookCta": "Buat Janji Dokter Online",
+      "igdHotline": "Hotline IGD 24 Jam: (021) 555-9999",
+      "stat1": "24/7",
+      "stat1Label": "IGD & Ambulans Siaga",
+      "stat2": "35+ Dokter",
+      "stat2Label": "Spesialis & Sub-Spesialis",
+      "stat3": "Akreditasi A",
+      "stat3Label": "Standar Mutu Paripurna",
+      "stat4": "BPJS & Cashless",
+      "stat4Label": "Mitra Asuransi Terlengkap"
+    },
+    "services": {
+      "badge": "Layanan Medis & Poliklinik",
+      "title": "Pusat Unggulan Pelayanan Kesehatan RS MediSyst",
+      "subtitle": "Setiap poliklinik ditangani dokter spesialis berpengalaman dengan peralatan medis mutakhir dan penanganan diagnostik presisi.",
+      "bookConsultation": "Daftar Konsultasi"
+    },
+    "doctors": {
+      "badge": "Tim Dokter Spesialis",
+      "title": "Dokter Spesialis Senior RS MediSyst",
+      "subtitle": "Siap memberikan pelayanan medis penuh dedikasi dengan pendekatan empati dan teknologi penanganan modern.",
+      "schedule": "Jadwal Praktik:",
+      "book": "Buat Janji Kunjungan"
+    },
+    "facilities": {
+      "badge": "Kamar Rawat Inap",
+      "title": "Fasilitas Perawatan Pasien yang Nyaman & Higienis",
+      "subtitle": "Berbagai pilihan kelas perawatan dengan standar kebersihan tinggi dan pengawasan perawat 24 jam.",
+      "info": "Informasi Admisi Kamar"
+    },
+    "journey": {
+      "badge": "Alur Pelayanan Pasien",
+      "title": "Panduan Berobat di RS MediSyst",
+      "subtitle": "Alur pelayanan terstruktur dari pendaftaran online hingga pemulangan pasien tanpa hambatan administrasi.",
+      "bpjsSync": "Integrasi BPJS & SIMRS"
+    },
+    "testimonials": {
+      "badge": "Kesan & Testimoni Pasien",
+      "title": "Kepercayaan & Kepuasan Pasien Adalah Kebanggaan Kami"
+    },
+    "emergency": {
+      "badge": "Instalasi Gawat Darurat & Ambulans 24/7",
+      "title": "Kondisi Darurat Medis? Hubungi Tim IGD RS MediSyst",
+      "subtitle": "Layanan gawat darurat cepat tanggap, penjemputan ambulans medis, dan dokter resusitasi bersertifikasi siap 24 jam setiap hari.",
+      "hotlineTitle": "Hotline IGD 24 Jam",
+      "waInfo": "WhatsApp Pendaftaran: 0812-9988-7766",
+      "bookCta": "Buat Janji Poliklinik Online"
+    },
+    "footer": {
+      "tagline": "Rumah Sakit Umum Terpadu penyedia layanan medis paripurna dengan standar keselamatan pasien utama.",
+      "address": "Jl. Kesehatan Utama No. 88, Jakarta Selatan",
+      "clinicsTitle": "Poliklinik Utama",
+      "insuranceTitle": "Mitra Penjamin",
+      "contactTitle": "Kontak RS MediSyst",
+      "rights": "Rumah Sakit MediSyst. Hak Cipta Dilindungi Undang-Undang."
+    },
+    "modal": {
+      "title": "Pendaftaran Janji Temu Dokter",
+      "subtitle": "Daftar online RS MediSyst tanpa antrean di loket.",
+      "patientName": "Nama Lengkap Pasien *",
+      "phone": "No. WhatsApp / Telepon *",
+      "poly": "Poliklinik Spesialis *",
+      "doctor": "Dokter Spesialis *",
+      "date": "Rencana Tanggal Kunjungan *",
+      "paymentType": "Jenis Penjamin Pembayaran *",
+      "complaint": "Keluhan Singkat Pasien (Opsional)",
+      "cancel": "Batal",
+      "submit": "Konfirmasi Booking Online",
+      "submitting": "Mendaftarkan...",
+      "successMsg": "Janji Temu Berhasil Terdaftar! Kami telah mengirimkan info konfirmasi ke No. WA Anda."
+    }
   }
 }

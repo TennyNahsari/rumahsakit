@@ -1,4 +1,4 @@
-﻿import api from './api'
+import api from './api'
 
 export const authService = {
   // Login user
@@ -111,6 +111,32 @@ export const visitService = {
     })
     return response
   },
+
+  // Queue actions
+  callVisit: async (id) => {
+    const response = await api.post(`/visits/${id}/call`)
+    return response.data
+  },
+
+  startVisit: async (id) => {
+    const response = await api.post(`/visits/${id}/start`)
+    return response.data
+  },
+
+  completeVisit: async (id) => {
+    const response = await api.post(`/visits/${id}/complete`)
+    return response.data
+  },
+
+  skipVisit: async (id) => {
+    const response = await api.post(`/visits/${id}/skip`)
+    return response.data
+  },
+
+  autoCompleteDay: async () => {
+    const response = await api.post('/visits/auto-complete-day')
+    return response.data
+  }
 }
 
 export const recordService = {

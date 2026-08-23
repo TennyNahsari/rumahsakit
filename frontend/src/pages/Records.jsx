@@ -12,6 +12,7 @@ const Records = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [filters, setFilters] = useState({
+    patientName: '',
     startDate: '',
     endDate: ''
   })
@@ -21,7 +22,10 @@ const Records = () => {
       setLoading(true)
       const params = {
         page,
-        limit: 10
+        limit: 10,
+        patientName: filters.patientName,
+        startDate: filters.startDate,
+        endDate: filters.endDate
       }
       
       const response = await recordService.getRecords(params)
@@ -37,17 +41,13 @@ const Records = () => {
 
   useEffect(() => {
     fetchRecords(currentPage)
-  }, [currentPage])
+  }, [currentPage, filters.patientName, filters.startDate, filters.endDate])
 
   const handleExport = async () => {
     try {
-      if (!filters.startDate || !filters.endDate) {
-        toast.error(t('records.selectDateRange'))
-        return
-      }
-
       toast.loading(t('records.exporting'))
       const params = {
+        patientName: filters.patientName,
         startDate: filters.startDate,
         endDate: filters.endDate
       }
@@ -60,7 +60,7 @@ const Records = () => {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `Rekam_Medis_${filters.startDate}_sd_${filters.endDate}.xlsx`
+      link.download = `Rekam_Medis_${filters.startDate || 'Semua'}_sd_${filters.endDate || 'Semua'}.xlsx`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -132,40 +132,69 @@ const Records = () => {
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="card">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Filters Card */}
+      <div className="card bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Filter Nama Pasien */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1">
+              <Search className="w-3.5 h-3.5 text-[#0052CC]" />
+              <span>Nama Pasien</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cari nama pasien..."
+                value={filters.patientName}
+                onChange={(e) => setFilters(prev => ({ ...prev, patientName: e.target.value }))}
+                className="w-full text-xs p-2.5 pl-9 rounded-lg border border-gray-300 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] outline-none"
+              />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+              {filters.patientName && (
+                <button
+                  onClick={() => setFilters(prev => ({ ...prev, patientName: '' }))}
+                  className="absolute right-2.5 top-2.5 text-xs text-gray-400 hover:text-gray-600 font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tanggal Mulai */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
               {t('records.filters.startDate')}
             </label>
             <input
               type="date"
               value={filters.startDate}
-              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className="input text-sm"
+              onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+              className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none"
             />
           </div>
+
+          {/* Tanggal Akhir */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
               {t('records.filters.endDate')}
             </label>
             <input
               type="date"
               value={filters.endDate}
-              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className="input text-sm"
+              onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+              className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none"
             />
           </div>
+
+          {/* Tombol Ekspor */}
           <div className="flex items-end">
             <button 
               onClick={handleExport}
-              className="btn bg-green-600 hover:bg-green-700 text-white w-full text-sm"
-              disabled={!filters.startDate || !filters.endDate}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center space-x-2 w-full shadow-sm transition-all"
             >
-              <Download className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">{t('records.exportData')}</span>
-              <span className="sm:hidden">Export</span>
+              <Download className="w-4 h-4" />
+              <span>{t('records.exportData')}</span>
             </button>
           </div>
         </div>

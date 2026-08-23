@@ -54,16 +54,20 @@ model Patient {
 }
 
 model Visit {
-  id          Int         @id @default(autoincrement())
-  patientId   Int         @map("patient_id")
-  doctorId    Int         @map("doctor_id")
-  visitType   VisitType   @map("visit_type")
-  scheduledAt DateTime    @map("scheduled_at")
-  queueNumber String?     @map("queue_number") @db.VarChar(20)
-  status      VisitStatus @default(SCHEDULED)
-  notes       String?     @db.Text
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  id                   Int          @id @default(autoincrement())
+  patientId            Int          @map("patient_id")
+  doctorId             Int          @map("doctor_id")
+  visitType            VisitType    @map("visit_type")
+  channel              QueueChannel @default(ONSITE_LOKET)
+  scheduledAt          DateTime     @map("scheduled_at")
+  queueNumber          String?      @map("queue_number") @db.VarChar(20)
+  queuePrefix          String?      @map("queue_prefix") @db.VarChar(20)
+  queueNumberFormatted String?      @map("queue_number_formatted") @db.VarChar(30)
+  status               VisitStatus  @default(SCHEDULED)
+  calledAt             DateTime?    @map("called_at")
+  notes                String?      @db.Text
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
 
   // Relations
   patient        Patient         @relation(fields: [patientId], references: [id])
@@ -258,10 +262,17 @@ enum VisitType {
   MEDICAL_ACTION
 }
 
+enum QueueChannel {
+  ONLINE_WEBSITE
+  ONSITE_LOKET
+}
+
 enum VisitStatus {
   SCHEDULED
+  CALLED
   IN_PROGRESS
   COMPLETED
+  SKIPPED
   CANCELLED
   NO_SHOW
 }

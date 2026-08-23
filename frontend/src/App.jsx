@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
 // Pages
+import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Patients from './pages/Patients'
@@ -16,6 +17,7 @@ import VisitEdit from './pages/VisitEdit'
 import Records from './pages/Records'
 import RecordForm from './pages/RecordForm'
 import RecordEdit from './pages/RecordEdit'
+import RecordDetail from './pages/RecordDetail'
 import Rooms from './pages/Rooms'
 import RoomForm from './pages/RoomForm'
 import RoomEdit from './pages/RoomEdit'
@@ -38,6 +40,7 @@ import UserEdit from './pages/UserEdit'
 import UserDetail from './pages/UserDetail'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import QueueDisplay from './pages/QueueDisplay'
 
 // Layout
 import Layout from './components/Layout'
@@ -203,6 +206,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <RecordEdit />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/records/:id" 
+              element={
+                <ProtectedRoute>
+                  <RecordDetail />
                 </ProtectedRoute>
               } 
             />
@@ -414,8 +426,11 @@ function App() {
               } 
             />
             
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Public TV Queue Display Route */}
+            <Route path="/queue-display" element={<QueueDisplay />} />
+
+            {/* Landing Page */}
+            <Route path="/" element={<Landing />} />
             
             {/* 404 Route */}
             <Route path="*" element={

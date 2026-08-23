@@ -27,10 +27,12 @@ const Navbar = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
             
-            <div className="flex ml-2 md:mr-24">
-              <span className="self-center text-base md:text-xl font-semibold sm:text-2xl whitespace-nowrap text-gray-900">
-                🏥 <span className="hidden sm:inline">{t('navbar.hospitalName')}</span>
-                <span className="sm:hidden">HIS</span>
+            <div className="flex ml-2 md:mr-24 items-center space-x-2 cursor-pointer" onClick={() => window.location.href = '/'}>
+              <div className="w-8 h-8 bg-[#0052CC] rounded-lg flex items-center justify-center text-white">
+                <span className="text-sm font-extrabold">M</span>
+              </div>
+              <span className="self-center text-base md:text-xl font-bold whitespace-nowrap text-[#1A1C1E]">
+                Medi<span className="text-[#0052CC]">Syst</span> <span className="text-xs uppercase bg-blue-50 text-[#0052CC] font-semibold px-2 py-0.5 rounded border border-blue-200">HMS</span>
               </span>
             </div>
           </div>
