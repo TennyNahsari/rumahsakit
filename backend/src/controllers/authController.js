@@ -236,9 +236,27 @@ const logout = async (req, res) => {
   });
 };
 
+// @desc    Get current logged in user
+// @route   GET /api/auth/me
+// @access  Private
+const getCurrentUser = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: { user: req.user }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch current user'
+    });
+  }
+};
+
 module.exports = {
   login,
   register,
   refreshToken,
-  logout
+  logout,
+  getCurrentUser
 };

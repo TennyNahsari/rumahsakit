@@ -63,7 +63,7 @@ router.post('/:id/complete', auth, authorize('ADMIN', 'DOCTOR'), completeVisit);
 router.post('/:id/skip', auth, authorize('ADMIN', 'FRONT_DESK', 'DOCTOR'), skipVisit);
 
 // @route   PUT /api/visits/:id
-router.put('/:id', auth, authorize('ADMIN', 'FRONT_DESK', 'DOCTOR'), updateVisit);
+router.put('/:id', auth, authorize('ADMIN', 'FRONT_DESK', 'DOCTOR', 'NURSE'), updateVisit);
 
 // @route   DELETE /api/visits/:id
 router.delete('/:id', auth, authorize('ADMIN'), deleteVisit);

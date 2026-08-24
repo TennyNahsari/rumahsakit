@@ -17,13 +17,14 @@ const Patients = () => {
     ageRange: ''
   })
 
-  const fetchPatients = async (page = 1, search = '') => {
+  const fetchPatients = async (page = 1, search = '', gender = '') => {
     try {
       setLoading(true)
       const params = {
         page,
         limit: 10,
-        ...(search && { search })
+        ...(search && { search }),
+        ...(gender && { gender })
       }
       
       const response = await patientService.getPatients(params)
@@ -37,13 +38,13 @@ const Patients = () => {
   }
 
   useEffect(() => {
-    fetchPatients(currentPage, searchTerm)
-  }, [currentPage])
+    fetchPatients(currentPage, searchTerm, filters.gender)
+  }, [currentPage, filters.gender])
 
   const handleSearch = (e) => {
     e.preventDefault()
     setCurrentPage(1)
-    fetchPatients(1, searchTerm)
+    fetchPatients(1, searchTerm, filters.gender)
   }
 
   const handleDelete = async (id) => {

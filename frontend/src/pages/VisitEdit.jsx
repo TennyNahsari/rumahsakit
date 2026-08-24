@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { visitService, patientService, userService } from '../services'
+import { visitService, patientService, userService, publicService } from '../services'
 import { ArrowLeft, Save, Search, Check, Stethoscope } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -47,47 +47,61 @@ const VisitEdit = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [visitResponse, patientsResponse, usersResponse] = await Promise.all([
+      const [visitRes, patientsRes, doctorsRes] = await Promise.allSettled([
         visitService.getVisit(id),
-        patientService.getPatients(),
-        userService.getUsers()
+        patientService.getPatients({ limit: 500 }),
+        publicService.getDoctors().catch(() => userService.getUsers())
       ])
 
-      const visit = visitResponse.data?.visit || visitResponse.data
-      setPatients(patientsResponse.data.patients || [])
+      if (visitRes.status !== 'fulfilled' || !visitRes.value) {
+        toast.error(t('visits.form.updateFailed', 'Gagal memuat data kunjungan'))
+        navigate('/visits')
+        return
+      }
+
+      const visitData = visitRes.value.data?.visit || visitRes.value.data || visitRes.value
+      const patientsList = patientsRes.status === 'fulfilled' ? (patientsRes.value.data?.patients || patientsRes.value.data || []) : []
+      setPatients(patientsList)
       
-      const usersList = usersResponse?.data?.users || usersResponse?.data || []
-      const doctorsList = usersList.filter(user => user.role === 'DOCTOR')
+      let doctorsList = []
+      if (doctorsRes.status === 'fulfilled' && doctorsRes.value) {
+        const rawDocs = doctorsRes.value.data?.doctors || doctorsRes.value.data?.users || doctorsRes.value.data || doctorsRes.value
+        doctorsList = Array.isArray(rawDocs) ? rawDocs.filter(d => d.role === 'DOCTOR' || !d.role) : []
+      }
       setDoctors(doctorsList)
 
-      const activeDoctor = doctorsList.find(d => d.id === visit.doctorId)
+      const activeDoctor = doctorsList.find(d => String(d.id) === String(visitData.doctorId))
       if (activeDoctor) {
         setDoctorSearch(`${activeDoctor.name} - ${activeDoctor.department || 'Spesialis'}`)
+      } else if (visitData.doctor?.name) {
+        setDoctorSearch(`${visitData.doctor.name} - ${visitData.doctor.department || 'Spesialis'}`)
       }
 
       // Parse scheduledAt date and optional time
       let dateVal = ''
       let timeVal = ''
 
-      if (visit.scheduledAt) {
-        const d = new Date(visit.scheduledAt)
-        dateVal = d.toISOString().split('T')[0]
-        
-        const hours = String(d.getHours()).padStart(2, '0')
-        const minutes = String(d.getMinutes()).padStart(2, '0')
-        if (hours !== '00' || minutes !== '00') {
-          timeVal = `${hours}:${minutes}`
+      if (visitData.scheduledAt) {
+        const d = new Date(visitData.scheduledAt)
+        if (!isNaN(d.getTime())) {
+          dateVal = d.toISOString().split('T')[0]
+          
+          const hours = String(d.getHours()).padStart(2, '0')
+          const minutes = String(d.getMinutes()).padStart(2, '0')
+          if (hours !== '00' || minutes !== '00') {
+            timeVal = `${hours}:${minutes}`
+          }
         }
       }
 
       setFormData({
-        patientId: visit.patientId,
-        doctorId: visit.doctorId,
-        visitType: visit.visitType,
+        patientId: visitData.patientId || visitData.patient?.id || '',
+        doctorId: visitData.doctorId || visitData.doctor?.id || '',
+        visitType: visitData.visitType || 'GENERAL_CHECKUP',
         visitDate: dateVal || new Date().toISOString().split('T')[0],
         visitTime: timeVal,
-        status: visit.status,
-        notes: visit.notes || ''
+        status: visitData.status || 'SCHEDULED',
+        notes: visitData.notes || ''
       })
     } catch (error) {
       console.error('Fetch visit data error:', error)

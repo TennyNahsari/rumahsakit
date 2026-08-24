@@ -25,13 +25,13 @@ router.get('/export/excel', auth, authorize('ADMIN'), exportUsersExcel);
 
 // @route   GET /api/users
 // @desc    Get all users
-// @access  Private (Admin)
-router.get('/', auth, authorize('ADMIN'), getUsers);
+// @access  Private
+router.get('/', auth, getUsers);
 
 // @route   GET /api/users/:id
 // @desc    Get user by ID
-// @access  Private (Admin)
-router.get('/:id', auth, authorize('ADMIN'), getUser);
+// @access  Private
+router.get('/:id', auth, getUser);
 
 // @route   POST /api/users
 // @desc    Create new user

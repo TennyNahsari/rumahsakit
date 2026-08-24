@@ -35,27 +35,27 @@ router.get('/:id', auth, getPatient);
 
 // @route   POST /api/patients
 // @desc    Create new patient
-// @access  Private (Admin, Front Desk)
+// @access  Private (Admin, Front Desk, Doctor, Nurse)
 router.post('/', [
   auth,
-  authorize('ADMIN', 'FRONT_DESK'),
+  authorize('ADMIN', 'FRONT_DESK', 'DOCTOR', 'NURSE'),
   body('name').trim().isLength({ min: 2 }),
   body('dateOfBirth').isISO8601(),
   body('gender').isIn(['MALE', 'FEMALE', 'OTHER']),
-  body('phone').optional().isMobilePhone(),
+  body('phone').optional().trim(),
   body('address').optional().trim()
 ], createPatient);
 
 // @route   PUT /api/patients/:id
 // @desc    Update patient
-// @access  Private (Admin, Front Desk)
+// @access  Private (Admin, Front Desk, Doctor, Nurse)
 router.put('/:id', [
   auth,
-  authorize('ADMIN', 'FRONT_DESK'),
+  authorize('ADMIN', 'FRONT_DESK', 'DOCTOR', 'NURSE'),
   body('name').optional().trim().isLength({ min: 2 }),
   body('dateOfBirth').optional().isISO8601(),
   body('gender').optional().isIn(['MALE', 'FEMALE', 'OTHER']),
-  body('phone').optional().isMobilePhone(),
+  body('phone').optional().trim(),
   body('address').optional().trim()
 ], updatePatient);
 

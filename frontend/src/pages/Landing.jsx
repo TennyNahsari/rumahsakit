@@ -24,6 +24,7 @@ const Landing = () => {
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false)
   const [createdTicketData, setCreatedTicketData] = useState(null)
   const [dbDoctors, setDbDoctors] = useState([])
+  const [dbPolyclinics, setDbPolyclinics] = useState([])
   const [bookingForm, setBookingForm] = useState({
     patientName: '',
     phone: '',
@@ -31,31 +32,54 @@ const Landing = () => {
     poly: 'Poli Penyakit Dalam',
     doctor: '',
     date: '',
+    visitType: 'OUTPATIENT',
     paymentType: 'BPJS Kesehatan',
     complaint: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const mapDepartmentToPoly = (dept = '') => {
+    if (!dept) return 'Poli Penyakit Dalam'
+    const lower = dept.toLowerCase()
+    if (lower.includes('anak')) return 'Poli Anak & Tumbuh Kembang'
+    if (lower.includes('obgyn') || lower.includes('kebidanan') || lower.includes('ginekologi') || lower.includes('kandungan')) return 'Poli Kebidanan & Kandungan'
+    if (lower.includes('jantung') || lower.includes('kardio') || lower.includes('pembuluh')) return 'Pusat Jantung & Pembuluh Darah'
+    if (lower.includes('bedah')) return 'Poli Bedah Umum & Laparoskopi'
+    if (lower.includes('saraf') || lower.includes('neuro') || lower.includes('stroke')) return 'Poli Saraf & Neurologi'
+    if (lower.includes('penyakit dalam') || lower.includes('dalam')) return 'Poli Penyakit Dalam'
+    return dept.startsWith('Poli') ? dept : `Poli ${dept}`
+  }
+
   React.useEffect(() => {
-    fetchDoctors()
+    fetchInitialData()
   }, [])
 
-  const fetchDoctors = async () => {
+  const fetchInitialData = async () => {
     try {
-      const res = await api.get('/users/public/doctors')
-      if (res.data?.data?.doctors) {
-        setDbDoctors(res.data.data.doctors)
-        if (res.data.data.doctors.length > 0) {
-          const firstDoc = res.data.data.doctors[0]
+      const [docRes, polyRes] = await Promise.allSettled([
+        api.get('/users/public/doctors'),
+        api.get('/polyclinics/public')
+      ])
+
+      if (docRes.status === 'fulfilled' && docRes.value?.data?.data?.doctors) {
+        const docs = docRes.value.data.data.doctors
+        setDbDoctors(docs)
+        if (docs.length > 0) {
+          const firstDoc = docs[0]
           setBookingForm(prev => ({
             ...prev,
             doctor: firstDoc.name,
-            poly: firstDoc.department || 'Poli Penyakit Dalam'
+            poly: mapDepartmentToPoly(firstDoc.department)
           }))
         }
       }
+
+      if (polyRes.status === 'fulfilled' && polyRes.value?.data) {
+        const polyList = polyRes.value.data.data?.polyclinics || polyRes.value.data.polyclinics || []
+        setDbPolyclinics(polyList)
+      }
     } catch (err) {
-      console.error('Fetch public doctors error:', err)
+      console.error('Fetch public initial data error:', err)
     }
   }
 
@@ -134,6 +158,119 @@ const Landing = () => {
       features: ['Laboratorium Darah & PCR 24/7', 'CT-Scan 128 Slice & X-Ray Digital', 'Depot Farmasi Obet Lengkap']
     }
   ]
+
+  const getDynamicServices = () => {
+    const isEn = i18n.language === 'en'
+
+    const iconMap = {
+      Stethoscope, HeartPulse, Users, Heart, Activity, Brain, Pill, Building2, Car, ShieldCheck
+    }
+
+    if (dbPolyclinics && dbPolyclinics.length > 0) {
+      return dbPolyclinics.map((poly) => {
+        const iconComp = iconMap[poly.icon] || Stethoscope
+        const title = isEn ? (poly.englishName || poly.name) : poly.name
+        const englishTitle = poly.englishName ? poly.englishName.toUpperCase() : 'SPECIALTY CLINIC'
+        const description = isEn ? (poly.englishDescription || poly.description) : poly.description
+        const features = Array.isArray(poly.services) && poly.services.length > 0
+          ? poly.services
+          : [`Konsultasi ${poly.name}`, `Pemeriksaan Diagnostik ${poly.name}`]
+
+        const matchingDocs = dbDoctors.filter(d => 
+          d.department && (
+            d.department.toLowerCase().includes(poly.name.toLowerCase()) ||
+            poly.name.toLowerCase().includes(d.department.toLowerCase())
+          )
+        )
+
+        return {
+          id: poly.id,
+          deptRaw: poly.name,
+          title,
+          englishTitle,
+          icon: iconComp,
+          color: poly.color || 'bg-blue-50 text-[#0052CC] border-blue-200',
+          description: description || 'Layanan kesehatan spesialis terpadu.',
+          features,
+          doctors: matchingDocs
+        }
+      })
+    }
+
+    if (!dbDoctors || dbDoctors.length === 0) return medicalServices
+
+    // Group doctors by department
+    const deptMap = {}
+    dbDoctors.forEach((doc) => {
+      const dept = doc.department || 'Poli Umum'
+      if (!deptMap[dept]) {
+        deptMap[dept] = []
+      }
+      deptMap[dept].push(doc)
+    })
+
+    const uniqueDepts = Object.keys(deptMap)
+
+    return uniqueDepts.map((dept, index) => {
+      const lower = dept.toLowerCase()
+      const docCount = deptMap[dept].length
+      const polyName = mapDepartmentToPoly(dept)
+
+      const preset = medicalServices.find((s) => 
+        s.title.toLowerCase().includes(lower) || 
+        lower.includes(s.id) ||
+        (lower.includes('anak') && s.id === 'pediatric') ||
+        (lower.includes('obgyn') && s.id === 'obgyn') ||
+        (lower.includes('jantung') && s.id === 'cardio') ||
+        (lower.includes('bedah') && s.id === 'surgery') ||
+        (lower.includes('saraf') && s.id === 'neuro') ||
+        (lower.includes('dalam') && s.id === 'internal')
+      )
+
+      let icon = Stethoscope
+      let color = 'bg-blue-50 text-[#0052CC] border-blue-200'
+      let englishTitle = `${dept} Specialty Center`
+      let description = isEn ? `Integrated specialized medical care for ${dept}.` : `Penanganan medis terpadu spesialis ${dept} oleh tim konsultan dokter senior.`
+      let features = isEn ? [
+        `Specialist ${dept} Consultation`,
+        `Diagnostic Examination for ${dept}`,
+        `${docCount} Registered Specialist Doctors`
+      ] : [
+        `Konsultasi Spesialis ${dept}`,
+        `Pemeriksaan Diagnostik ${dept}`,
+        `${docCount} Dokter DPJP Terdaftar`
+      ]
+
+      if (preset) {
+        icon = preset.icon
+        color = preset.color
+        englishTitle = preset.englishTitle
+        description = isEn ? `Comprehensive specialized medical treatment for ${dept}.` : preset.description
+        features = [
+          ...preset.features.slice(0, 2),
+          isEn ? `${docCount} Registered DPJP Doctors` : `${docCount} Dokter DPJP Terdaftar`
+        ]
+      } else {
+        if (lower.includes('anak')) { icon = Users; color = 'bg-emerald-50 text-emerald-600 border-emerald-200'; }
+        else if (lower.includes('obgyn') || lower.includes('kandungan') || lower.includes('kebidanan')) { icon = Heart; color = 'bg-pink-50 text-pink-600 border-pink-200'; }
+        else if (lower.includes('jantung') || lower.includes('kardio')) { icon = Activity; color = 'bg-red-50 text-red-600 border-red-200'; }
+        else if (lower.includes('bedah')) { icon = Stethoscope; color = 'bg-indigo-50 text-indigo-600 border-indigo-200'; }
+        else if (lower.includes('saraf') || lower.includes('neuro')) { icon = Brain; color = 'bg-purple-50 text-purple-600 border-purple-200'; }
+      }
+
+      return {
+        id: `dept-${index}`,
+        deptRaw: dept,
+        title: isEn ? `${dept} Clinic` : polyName,
+        englishTitle,
+        icon,
+        color,
+        description,
+        features,
+        doctors: deptMap[dept]
+      }
+    })
+  }
 
   // Inpatient Wards & Rooms
   const inpatientRooms = [
@@ -288,6 +425,7 @@ const Landing = () => {
           poly: 'Poli Penyakit Dalam',
           doctor: 'dr. Hendra Wijaya, Sp.PD',
           date: '',
+          visitType: 'OUTPATIENT',
           paymentType: 'BPJS Kesehatan',
           complaint: ''
         })
@@ -301,10 +439,12 @@ const Landing = () => {
   }
 
   const openBookingForDoctor = (docName, polyName) => {
+    const selectedDoc = dbDoctors.find(d => d.name === docName)
+    const dept = selectedDoc?.department || polyName
     setBookingForm(prev => ({
       ...prev,
       doctor: docName,
-      poly: polyName || prev.poly
+      poly: mapDepartmentToPoly(dept)
     }))
     setIsAppointmentModalOpen(true)
   }
@@ -481,8 +621,9 @@ const Landing = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {medicalServices.map((service) => {
+            {getDynamicServices().map((service) => {
               const IconComp = service.icon
+              const firstDoctor = service.doctors?.[0]
               return (
                 <div
                   key={service.id}
@@ -511,7 +652,13 @@ const Landing = () => {
                   </div>
 
                   <button
-                    onClick={() => setIsAppointmentModalOpen(true)}
+                    onClick={() => {
+                      if (firstDoctor) {
+                        openBookingForDoctor(firstDoctor.name, service.deptRaw)
+                      } else {
+                        setIsAppointmentModalOpen(true)
+                      }
+                    }}
                     className="mt-6 w-full text-xs font-bold text-[#0052CC] py-2 rounded-lg bg-white border border-blue-200 hover:bg-[#0052CC] hover:text-white transition-all flex items-center justify-center space-x-1"
                   >
                     <span>{t('landing.services.bookConsultation')}</span>
@@ -872,7 +1019,49 @@ const Landing = () => {
                 </div>
               </div>
 
+              {/* Doctor first, then Specialty Clinic */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.doctor')}</label>
+                  <select
+                    value={bookingForm.doctor}
+                    onChange={(e) => {
+                      const docName = e.target.value
+                      const selectedDoc = dbDoctors.find(d => d.name === docName)
+                      let dept = selectedDoc?.department
+                      if (!dept) {
+                        if (docName.includes('Sp.PD')) dept = 'Penyakit Dalam'
+                        else if (docName.includes('Sp.A')) dept = 'Anak'
+                        else if (docName.includes('Sp.OG')) dept = 'Kebidanan & Kandungan'
+                        else if (docName.includes('Sp.JP')) dept = 'Jantung'
+                        else if (docName.includes('Sp.B')) dept = 'Bedah'
+                        else if (docName.includes('Sp.N') || docName.includes('Sp.S')) dept = 'Saraf'
+                      }
+                      const autoPoly = mapDepartmentToPoly(dept)
+                      setBookingForm(prev => ({
+                        ...prev,
+                        doctor: docName,
+                        poly: autoPoly
+                      }))
+                    }}
+                    className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white font-medium"
+                  >
+                    {dbDoctors.length > 0 ? (
+                      dbDoctors.map(doc => (
+                        <option key={doc.id} value={doc.name}>
+                          {doc.name} ({doc.department || 'Spesialis'})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="dr. Ahmad Hidayat, Sp.PD">dr. Ahmad Hidayat, Sp.PD (Penyakit Dalam)</option>
+                        <option value="dr. Siti Nurhaliza, Sp.A">dr. Siti Nurhaliza, Sp.A (Anak)</option>
+                        <option value="dr. Budi Santoso, Sp.OG">dr. Budi Santoso, Sp.OG (Kebidanan & Kandungan)</option>
+                        <option value="dr. Rina Kusuma, Sp.JP">dr. Rina Kusuma, Sp.JP (Jantung)</option>
+                      </>
+                    )}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.poly')}</label>
                   <select
@@ -884,52 +1073,53 @@ const Landing = () => {
                     <option value="Poli Anak & Tumbuh Kembang">Poli Anak & Tumbuh Kembang</option>
                     <option value="Poli Kebidanan & Kandungan">Poli Kebidanan & Kandungan</option>
                     <option value="Pusat Jantung & Pembuluh Darah">Pusat Jantung & Pembuluh Darah</option>
-                    <option value="Poli Bedah Umum & Laparoskopi">Poli Bedah Umum</option>
-                    <option value="Poli Saraf & Neurologi">Poli Saraf</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.doctor')}</label>
-                  <select
-                    value={bookingForm.doctor}
-                    onChange={(e) => setBookingForm({ ...bookingForm, doctor: e.target.value })}
-                    className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white font-medium"
-                  >
-                    {dbDoctors.length > 0 ? (
-                      dbDoctors.map(doc => (
-                        <option key={doc.id} value={doc.name}>
-                          {doc.name} ({doc.department || 'Spesialis'})
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="dr. Ahmad Hidayat, Sp.PD">dr. Ahmad Hidayat, Sp.PD</option>
-                        <option value="dr. Siti Nurhaliza, Sp.A">dr. Siti Nurhaliza, Sp.A</option>
-                        <option value="dr. Budi Santoso, Sp.OG">dr. Budi Santoso, Sp.OG</option>
-                        <option value="dr. Rina Kusuma, Sp.JP">dr. Rina Kusuma, Sp.JP</option>
-                      </>
+                    <option value="Poli Bedah Umum & Laparoskopi">Poli Bedah Umum & Laparoskopi</option>
+                    <option value="Poli Saraf & Neurologi">Poli Saraf & Neurologi</option>
+                    {![
+                      'Poli Penyakit Dalam',
+                      'Poli Anak & Tumbuh Kembang',
+                      'Poli Kebidanan & Kandungan',
+                      'Pusat Jantung & Pembuluh Darah',
+                      'Poli Bedah Umum & Laparoskopi',
+                      'Poli Saraf & Neurologi'
+                    ].includes(bookingForm.poly) && bookingForm.poly && (
+                      <option value={bookingForm.poly}>{bookingForm.poly}</option>
                     )}
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.date')}</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.date', 'Tanggal Kunjungan *')}</label>
                   <input
                     type="date"
                     required
                     value={bookingForm.date}
                     onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })}
-                    className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white"
+                    className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.paymentType')}</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.visitType', 'Tipe Kunjungan *')}</label>
+                  <select
+                    value={bookingForm.visitType}
+                    onChange={(e) => setBookingForm({ ...bookingForm, visitType: e.target.value })}
+                    className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white font-medium"
+                  >
+                    <option value="OUTPATIENT">📋 Rawat Jalan (Outpatient)</option>
+                    <option value="GENERAL_CHECKUP">🩺 General Checkup / MCU</option>
+                    <option value="INPATIENT">🛏️ Rawat Inap (Inpatient)</option>
+                    <option value="EMERGENCY">🚨 Gawat Darurat / UGD (Emergency)</option>
+                    <option value="MEDICAL_ACTION">💉 Tindakan Medis (Medical Action)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t('landing.modal.paymentType', 'Jenis Penjamin *')}</label>
                   <select
                     value={bookingForm.paymentType}
                     onChange={(e) => setBookingForm({ ...bookingForm, paymentType: e.target.value })}
-                    className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white"
+                    className="w-full text-xs p-3 rounded-lg border border-gray-300 focus:border-[#0052CC] outline-none bg-white font-medium"
                   >
                     <option value="BPJS Kesehatan">BPJS Kesehatan</option>
                     <option value="Pasien Umum / Mandiri">Pasien Umum / Mandiri</option>

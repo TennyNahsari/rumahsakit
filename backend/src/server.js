@@ -18,6 +18,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const roomRoutes = require('./routes/roomRoutes');
 const inpatientRoutes = require('./routes/inpatientRoutes');
 const predictionRoutes = require('./routes/predictionRoutes');
+const polyclinicRoutes = require('./routes/polyclinicRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -31,8 +32,23 @@ app.use(helmet());
 app.use(compression());
 
 // CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:8081',
+  'http://localhost:19006',
+  'http://127.0.0.1:8081',
+  'http://127.0.0.1:3000'
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 
@@ -81,9 +97,11 @@ app.use('/api/visits', visitRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/billings', billingRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/inpatients', inpatientRoutes);
 app.use('/api/predictions', predictionRoutes);
+app.use('/api/polyclinics', polyclinicRoutes);
 
 // Static files for uploads
 app.use('/uploads', express.static('uploads'));

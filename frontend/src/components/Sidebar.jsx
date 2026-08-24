@@ -35,6 +35,13 @@ const Sidebar = ({ isOpen, onClose }) => {
       roles: ['ADMIN', 'DOCTOR', 'NURSE', 'FRONT_DESK']
     },
     {
+      name: 'polyclinics',
+      label: 'Poliklinik',
+      href: '/polyclinics',
+      icon: Building2,
+      roles: ['ADMIN', 'DOCTOR', 'NURSE', 'FRONT_DESK']
+    },
+    {
       name: 'visits',
       href: '/visits',
       icon: Calendar,

@@ -1,8 +1,14 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { login, register, refreshToken, logout } = require('../controllers/authController');
+const { login, register, refreshToken, logout, getCurrentUser } = require('../controllers/authController');
+const { auth } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+// @route   GET /api/auth/me
+// @desc    Get current user profile
+// @access  Private
+router.get('/me', auth, getCurrentUser);
 
 // @route   POST /api/auth/login
 // @desc    Login user

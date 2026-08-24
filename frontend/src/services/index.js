@@ -424,3 +424,48 @@ export const inpatientService = {
     return response
   },
 }
+
+// Polyclinic Service
+export const polyclinicService = {
+  // Get all polyclinics
+  getPolyclinics: async (params = {}) => {
+    const response = await api.get('/polyclinics', { params })
+    return response.data
+  },
+
+  // Get single polyclinic
+  getPolyclinic: async (id) => {
+    const response = await api.get(`/polyclinics/${id}`)
+    return response.data
+  },
+
+  // Create polyclinic
+  createPolyclinic: async (data) => {
+    const response = await api.post('/polyclinics', data)
+    return response.data
+  },
+
+  // Update polyclinic
+  updatePolyclinic: async (id, data) => {
+    const response = await api.put(`/polyclinics/${id}`, data)
+    return response.data
+  },
+
+  // Delete polyclinic
+  deletePolyclinic: async (id) => {
+    const response = await api.delete(`/polyclinics/${id}`)
+    return response.data
+  },
+}
+
+// Public Service
+export const publicService = {
+  getDoctors: async () => {
+    const response = await api.get('/users/public/doctors')
+    return response.data
+  },
+  getPolyclinics: async () => {
+    const response = await api.get('/polyclinics/public')
+    return response.data
+  }
+}

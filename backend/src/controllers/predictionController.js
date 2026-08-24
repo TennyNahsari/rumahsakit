@@ -28,7 +28,7 @@ const fetchHistoricalData = async () => {
 
     // Fetch detailed visit data for time series
     const visitData = {}
-    const visitTypes = ['GENERAL_CHECKUP', 'INPATIENT', 'EMERGENCY', 'MEDICAL_ACTION']
+    const visitTypes = ['GENERAL_CHECKUP', 'OUTPATIENT', 'INPATIENT', 'EMERGENCY', 'MEDICAL_ACTION']
 
     for (const visitType of visitTypes) {
       const data = await prisma.$queryRaw`
@@ -43,10 +43,15 @@ const fetchHistoricalData = async () => {
         ORDER BY date
       `
       
-      visitData[visitType] = data.map(row => ({
-        date: row.date.toISOString().split('T')[0],
-        count: row.count
-      }))
+      visitData[visitType] = data.map(row => {
+        const dateStr = row.date instanceof Date 
+          ? row.date.toISOString().split('T')[0] 
+          : String(row.date).split('T')[0]
+        return {
+          date: dateStr,
+          count: row.count
+        }
+      })
     }
 
     // Fetch room occupancy data grouped by room type
@@ -66,10 +71,15 @@ const fetchHistoricalData = async () => {
         ORDER BY date
       `
       
-      roomData[roomType] = data.map(row => ({
-        date: row.date.toISOString().split('T')[0],
-        count: row.count
-      }))
+      roomData[roomType] = data.map(row => {
+        const dateStr = row.date instanceof Date 
+          ? row.date.toISOString().split('T')[0] 
+          : String(row.date).split('T')[0]
+        return {
+          date: dateStr,
+          count: row.count
+        }
+      })
     }
 
     return {

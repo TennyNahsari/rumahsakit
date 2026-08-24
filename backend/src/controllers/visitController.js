@@ -271,7 +271,7 @@ const createVisit = async (req, res) => {
 const updateVisit = async (req, res) => {
   try {
     const { id } = req.params;
-    const { visitType, scheduledAt, status, notes } = req.body;
+    const { patientId, doctorId, channel, visitType, scheduledAt, status, notes } = req.body;
 
     const existingVisit = await prisma.visit.findUnique({
       where: { id: parseInt(id) }
@@ -285,6 +285,9 @@ const updateVisit = async (req, res) => {
     }
 
     const updateData = {};
+    if (patientId) updateData.patientId = parseInt(patientId);
+    if (doctorId) updateData.doctorId = parseInt(doctorId);
+    if (channel) updateData.channel = channel;
     if (visitType) updateData.visitType = visitType;
     if (scheduledAt) updateData.scheduledAt = new Date(scheduledAt);
     if (status) updateData.status = status;
@@ -305,7 +308,8 @@ const updateVisit = async (req, res) => {
 
     res.json({
       success: true,
-      data: visit
+      data: { visit },
+      visit
     });
 
   } catch (error) {
@@ -594,7 +598,7 @@ const getQueueDisplay = async (req, res) => {
 // @access  Public
 const createPublicBooking = async (req, res) => {
   try {
-    const { patientName, phone, poly, doctor: doctorName, date, paymentType, complaint } = req.body;
+    const { patientName, phone, poly, doctor: doctorName, date, visitType, paymentType, complaint } = req.body;
 
     if (!patientName || !phone || !date) {
       return res.status(400).json({
@@ -652,7 +656,11 @@ const createPublicBooking = async (req, res) => {
       });
     }
 
-    const { queuePrefix, queueNumberFormatted } = await generateDoctorQueueNumber(doctorUser.id, 'OUTPATIENT', 'ONLINE_WEBSITE');
+    const validVisitType = ['GENERAL_CHECKUP', 'OUTPATIENT', 'INPATIENT', 'EMERGENCY', 'MEDICAL_ACTION'].includes(visitType)
+      ? visitType
+      : 'OUTPATIENT';
+
+    const { queuePrefix, queueNumberFormatted } = await generateDoctorQueueNumber(doctorUser.id, validVisitType, 'ONLINE_WEBSITE');
 
     const scheduleDate = new Date(date);
 
@@ -660,14 +668,14 @@ const createPublicBooking = async (req, res) => {
       data: {
         patientId: patient.id,
         doctorId: doctorUser.id,
-        visitType: 'OUTPATIENT',
+        visitType: validVisitType,
         channel: 'ONLINE_WEBSITE',
         queuePrefix,
         queueNumberFormatted,
         queueNumber: queueNumberFormatted,
         scheduledAt: scheduleDate,
         status: 'SCHEDULED',
-        notes: `Online Booking Landing Page | Poli: ${poly || '-'} | Penjamin: ${paymentType || 'BPJS'} | Keluhan: ${complaint || '-'}`
+        notes: `Online Booking Landing Page | Tipe: ${validVisitType} | Poli: ${poly || '-'} | Penjamin: ${paymentType || 'BPJS'} | Keluhan: ${complaint || '-'}`
       },
       include: {
         patient: true,

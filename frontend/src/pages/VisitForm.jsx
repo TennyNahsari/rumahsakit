@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { visitService, patientService, userService } from '../services'
+import { visitService, patientService, userService, publicService } from '../services'
 import { ArrowLeft, Save, Search, Check, User, Stethoscope } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -54,15 +54,19 @@ const VisitForm = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [patientsResponse, usersResponse] = await Promise.all([
-        patientService.getPatients(),
-        userService.getUsers()
+      const [patientsRes, doctorsRes] = await Promise.allSettled([
+        patientService.getPatients({ limit: 500 }),
+        publicService.getDoctors().catch(() => userService.getUsers())
       ])
 
-      setPatients(patientsResponse.data.patients || [])
+      const patientsList = patientsRes.status === 'fulfilled' ? (patientsRes.value.data?.patients || patientsRes.value.data || []) : []
+      setPatients(patientsList)
       
-      const usersList = usersResponse?.data?.users || usersResponse?.data || []
-      const doctorsList = usersList.filter(user => user.role === 'DOCTOR')
+      let doctorsList = []
+      if (doctorsRes.status === 'fulfilled' && doctorsRes.value) {
+        const rawDocs = doctorsRes.value.data?.doctors || doctorsRes.value.data?.users || doctorsRes.value.data || doctorsRes.value
+        doctorsList = Array.isArray(rawDocs) ? rawDocs.filter(d => d.role === 'DOCTOR' || !d.role) : []
+      }
       setDoctors(doctorsList)
     } catch (error) {
       console.error('Fetch data error:', error)

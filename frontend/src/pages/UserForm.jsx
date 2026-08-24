@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { userService } from '../services'
+import { userService, publicService, polyclinicService } from '../services'
 import { ArrowLeft, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const UserForm = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [polyclinics, setPolyclinics] = useState([])
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -15,6 +16,20 @@ const UserForm = () => {
     department: '',
     phone: ''
   })
+
+  useEffect(() => {
+    fetchPolyclinics()
+  }, [])
+
+  const fetchPolyclinics = async () => {
+    try {
+      const res = await publicService.getPolyclinics().catch(() => polyclinicService.getPolyclinics())
+      const list = res?.data?.polyclinics || res?.polyclinics || []
+      setPolyclinics(list)
+    } catch (err) {
+      console.error('Fetch polyclinics error in UserForm:', err)
+    }
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -152,16 +167,35 @@ const UserForm = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Departemen
+                  Departemen / Poliklinik
                 </label>
-                <input
-                  type="text"
+                <select
                   name="department"
                   value={formData.department}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Contoh: Poli Umum, IGD, dll"
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white font-medium"
+                >
+                  <option value="">-- Pilih Departemen / Poliklinik --</option>
+                  {polyclinics.length > 0 ? (
+                    polyclinics.map((poly) => (
+                      <option key={poly.id} value={poly.name}>
+                        🏥 {poly.name} ({poly.code || 'POLI'})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Penyakit Dalam">Poliklinik Penyakit Dalam</option>
+                      <option value="Anak">Poliklinik Anak & Tumbuh Kembang</option>
+                      <option value="Obstetri & Ginekologi">Kebidanan & Kandungan (Obgyn)</option>
+                      <option value="Jantung dan Pembuluh Darah">Pusat Jantung & Pembuluh Darah</option>
+                      <option value="Bedah Umum">Poliklinik Bedah Umum & Ortopedi</option>
+                      <option value="Saraf">Poliklinik Saraf & Stroke Unit</option>
+                    </>
+                  )}
+                  {formData.department && !polyclinics.some(p => p.name === formData.department) && (
+                    <option value={formData.department}>{formData.department}</option>
+                  )}
+                </select>
               </div>
             </div>
           </div>

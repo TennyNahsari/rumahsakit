@@ -41,6 +41,7 @@ import UserDetail from './pages/UserDetail'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import QueueDisplay from './pages/QueueDisplay'
+import Polyclinics from './pages/Polyclinics'
 
 // Layout
 import Layout from './components/Layout'
@@ -125,6 +126,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Patients />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/polyclinics" 
+              element={
+                <ProtectedRoute>
+                  <Polyclinics />
                 </ProtectedRoute>
               } 
             />

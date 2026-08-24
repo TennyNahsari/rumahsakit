@@ -106,6 +106,7 @@ Response:
 ## Models Storage
 Trained models are stored in `backend/ml_models/`:
 - `prophet_general_checkup.pkl`
+- `prophet_outpatient.pkl`
 - `prophet_inpatient.pkl`
 - `prophet_emergency.pkl`
 - `prophet_medical_action.pkl`

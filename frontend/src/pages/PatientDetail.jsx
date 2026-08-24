@@ -211,37 +211,62 @@ const PatientDetail = () => {
             
             {patient.visits && patient.visits.length > 0 ? (
               <div className="space-y-3">
-                {patient.visits.slice(0, 5).map((visit) => (
-                  <div
-                    key={visit.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Activity className="w-5 h-5 text-primary-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {visit.visitType}
+                {patient.visits.slice(0, 5).map((visit) => {
+                  const visitTypeLabel = t(`dashboard.ai.visitType.${visit.visitType}`, {
+                    defaultValue: visit.visitType || visit.poliklinik || 'Pemeriksaan'
+                  });
+                  const isEmergency = visit.visitType === 'EMERGENCY';
+                  const isMedicalAction = visit.visitType === 'MEDICAL_ACTION';
+                  const isOutpatient = visit.visitType === 'OUTPATIENT';
+                  const isInpatient = visit.visitType === 'INPATIENT';
+
+                  const visitTypeBadgeClass = isEmergency
+                    ? 'bg-red-100 text-red-800 border-red-200'
+                    : isMedicalAction
+                    ? 'bg-purple-100 text-purple-800 border-purple-200'
+                    : isOutpatient
+                    ? 'bg-blue-100 text-blue-800 border-blue-200'
+                    : isInpatient
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    : 'bg-gray-100 text-gray-800 border-gray-200';
+
+                  return (
+                    <div
+                      key={visit.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary-200 transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Activity className={`w-5 h-5 ${isEmergency ? 'text-red-600' : isMedicalAction ? 'text-purple-600' : 'text-primary-600'}`} />
+                        <div>
+                          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${visitTypeBadgeClass}`}>
+                              {visitTypeLabel}
+                            </span>
+                            {visit.poliklinik && (
+                              <span className="text-xs text-gray-600 font-medium">• {visit.poliklinik}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {t('patients.detail.visitDoctor')}: <span className="font-medium text-gray-900">{visit.doctor?.name || '-'}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-gray-900">
+                          {formatDate(visit.scheduledAt || visit.createdAt)}
                         </p>
-                        <p className="text-sm text-gray-600">
-                          {t('patients.detail.visitDoctor')}: {visit.doctor?.name || '-'}
-                        </p>
+                        <span className={`badge text-xs mt-1 ${
+                          visit.status === 'COMPLETED' ? 'badge-success' :
+                          visit.status === 'IN_PROGRESS' ? 'badge-warning' :
+                          visit.status === 'SCHEDULED' ? 'badge-primary' :
+                          'badge-gray'
+                        }`}>
+                          {visit.status}
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-900">
-                        {formatDate(visit.scheduledAt)}
-                      </p>
-                      <span className={`badge ${
-                        visit.status === 'COMPLETED' ? 'badge-success' :
-                        visit.status === 'IN_PROGRESS' ? 'badge-warning' :
-                        visit.status === 'SCHEDULED' ? 'badge-primary' :
-                        'badge-gray'
-                      }`}>
-                        {visit.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-center text-gray-500 py-8">

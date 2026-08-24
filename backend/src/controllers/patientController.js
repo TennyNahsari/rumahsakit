@@ -41,8 +41,28 @@ const getPatients = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    const search = req.query.search || '';
+    const gender = req.query.gender || '';
+
+    // Construct filtering clause
+    const where = {};
+
+    if (search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { medicalRecordNo: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    if (gender && ['MALE', 'FEMALE', 'OTHER'].includes(gender.toUpperCase())) {
+      where.gender = gender.toUpperCase();
+    }
+
     const [patients, total] = await Promise.all([
       prisma.patient.findMany({
+        where,
         skip,
         take: limit,
         orderBy: {
@@ -64,7 +84,7 @@ const getPatients = async (req, res) => {
           }
         }
       }),
-      prisma.patient.count()
+      prisma.patient.count({ where })
     ]);
 
     res.json({
@@ -144,7 +164,7 @@ const getPatient = async (req, res) => {
 
 // @desc    Create new patient
 // @route   POST /api/patients
-// @access  Private (Admin, Front Desk)
+// @access  Private (Admin, Front Desk, Doctor, Nurse)
 const createPatient = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -156,10 +176,42 @@ const createPatient = async (req, res) => {
       });
     }
 
-    const { name, dateOfBirth, gender, phone, address, emergencyContact } = req.body;
+    const {
+      name,
+      dateOfBirth,
+      gender,
+      phone,
+      address,
+      emergencyContact,
+      emergencyContactName,
+      emergencyContactRel,
+      emergencyContactPhone,
+      nik,
+      bloodType,
+      religion,
+      maritalStatus,
+      insuranceType,
+      insuranceNumber,
+      allergies,
+      medicalHistory,
+    } = req.body;
 
     // Generate unique MRN
     const medicalRecordNo = await generateMRN();
+
+    const contactData = emergencyContact || {
+      name: emergencyContactName || '',
+      relationship: emergencyContactRel || '',
+      phone: emergencyContactPhone || '',
+      nik: nik || '',
+      bloodType: bloodType || '',
+      religion: religion || '',
+      maritalStatus: maritalStatus || '',
+      insuranceType: insuranceType || '',
+      insuranceNumber: insuranceNumber || '',
+      allergies: allergies || '',
+      medicalHistory: medicalHistory || '',
+    };
 
     const patient = await prisma.patient.create({
       data: {
@@ -169,7 +221,7 @@ const createPatient = async (req, res) => {
         gender,
         phone,
         address,
-        emergencyContact
+        emergencyContact: contactData,
       }
     });
 
@@ -180,6 +232,7 @@ const createPatient = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('createPatient error:', error);
     if (error.code === 'P2002') {
       return res.status(400).json({
         success: false,
@@ -195,7 +248,7 @@ const createPatient = async (req, res) => {
 
 // @desc    Update patient
 // @route   PUT /api/patients/:id
-// @access  Private (Admin, Front Desk)
+// @access  Private (Admin, Front Desk, Doctor, Nurse)
 const updatePatient = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -208,16 +261,67 @@ const updatePatient = async (req, res) => {
     }
 
     const { id } = req.params;
-    const updateData = { ...req.body };
+    const {
+      name,
+      dateOfBirth,
+      gender,
+      phone,
+      address,
+      emergencyContact,
+      emergencyContactName,
+      emergencyContactRel,
+      emergencyContactPhone,
+      nik,
+      bloodType,
+      religion,
+      maritalStatus,
+      insuranceType,
+      insuranceNumber,
+      allergies,
+      medicalHistory,
+    } = req.body;
 
-    // Convert dateOfBirth to Date object if provided
-    if (updateData.dateOfBirth) {
-      updateData.dateOfBirth = new Date(updateData.dateOfBirth);
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (dateOfBirth !== undefined) data.dateOfBirth = new Date(dateOfBirth);
+    if (gender !== undefined) data.gender = gender;
+    if (phone !== undefined) data.phone = phone;
+    if (address !== undefined) data.address = address;
+
+    if (
+      emergencyContact !== undefined ||
+      emergencyContactName !== undefined ||
+      emergencyContactPhone !== undefined ||
+      nik !== undefined ||
+      bloodType !== undefined ||
+      allergies !== undefined
+    ) {
+      const existingPatient = await prisma.patient.findUnique({
+        where: { id: parseInt(id) },
+        select: { emergencyContact: true }
+      });
+
+      const existingContact = existingPatient?.emergencyContact || {};
+      data.emergencyContact = {
+        ...existingContact,
+        ...(emergencyContact || {}),
+        ...(emergencyContactName !== undefined && { name: emergencyContactName }),
+        ...(emergencyContactRel !== undefined && { relationship: emergencyContactRel }),
+        ...(emergencyContactPhone !== undefined && { phone: emergencyContactPhone }),
+        ...(nik !== undefined && { nik }),
+        ...(bloodType !== undefined && { bloodType }),
+        ...(religion !== undefined && { religion }),
+        ...(maritalStatus !== undefined && { maritalStatus }),
+        ...(insuranceType !== undefined && { insuranceType }),
+        ...(insuranceNumber !== undefined && { insuranceNumber }),
+        ...(allergies !== undefined && { allergies }),
+        ...(medicalHistory !== undefined && { medicalHistory }),
+      };
     }
 
     const patient = await prisma.patient.update({
       where: { id: parseInt(id) },
-      data: updateData
+      data
     });
 
     res.json({
@@ -225,7 +329,6 @@ const updatePatient = async (req, res) => {
       data: { patient },
       message: 'Patient updated successfully'
     });
-
   } catch (error) {
     if (error.code === 'P2025') {
       return res.status(404).json({

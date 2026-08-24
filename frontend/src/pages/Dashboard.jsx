@@ -144,6 +144,7 @@ const Dashboard = () => {
   // Color mapping for visit types
   const visitColors = {
     'GENERAL_CHECKUP': '#3b82f6',
+    'OUTPATIENT': '#8b5cf6',
     'INPATIENT': '#10b981',
     'EMERGENCY': '#ef4444',
     'MEDICAL_ACTION': '#f59e0b'

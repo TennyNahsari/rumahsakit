@@ -505,7 +505,7 @@ async function main() {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
-    const visitTypesForAI = ['GENERAL_CHECKUP', 'INPATIENT', 'EMERGENCY', 'MEDICAL_ACTION'];
+    const visitTypesForAI = ['GENERAL_CHECKUP', 'OUTPATIENT', 'INPATIENT', 'EMERGENCY', 'MEDICAL_ACTION'];
     const roomTypesForAI = ['VIP', 'KELAS_1', 'KELAS_2', 'KELAS_3', 'ICU', 'NICU', 'PICU', 'ISOLATION'];
     
     // Generate 80 historical visits (random between 50-100)
@@ -518,10 +518,11 @@ async function main() {
       // Random visit type with weighted distribution
       let visitType;
       const rand = Math.random();
-      if (rand < 0.4) visitType = 'GENERAL_CHECKUP'; // 40%
-      else if (rand < 0.65) visitType = 'INPATIENT'; // 25%
-      else if (rand < 0.85) visitType = 'EMERGENCY'; // 20%
-      else visitType = 'MEDICAL_ACTION'; // 15%
+      if (rand < 0.30) visitType = 'GENERAL_CHECKUP'; // 30%
+      else if (rand < 0.55) visitType = 'OUTPATIENT'; // 25%
+      else if (rand < 0.75) visitType = 'INPATIENT'; // 20%
+      else if (rand < 0.90) visitType = 'EMERGENCY'; // 15%
+      else visitType = 'MEDICAL_ACTION'; // 10%
       
       // Random date within last 6 months
       const randomDaysAgo = Math.floor(Math.random() * 180); // 0-180 days

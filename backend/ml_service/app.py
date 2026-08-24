@@ -20,7 +20,7 @@ MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', 'ml_models')
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Visit types
-VISIT_TYPES = ['GENERAL_CHECKUP', 'INPATIENT', 'EMERGENCY', 'MEDICAL_ACTION']
+VISIT_TYPES = ['GENERAL_CHECKUP', 'OUTPATIENT', 'INPATIENT', 'EMERGENCY', 'MEDICAL_ACTION']
 
 # Room types
 ROOM_TYPES = ['VIP', 'KELAS_1', 'KELAS_2', 'KELAS_3', 'ICU', 'NICU', 'PICU', 'ISOLATION']
