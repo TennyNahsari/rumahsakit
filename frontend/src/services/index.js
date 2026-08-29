@@ -469,3 +469,15 @@ export const publicService = {
     return response.data
   }
 }
+
+// Settings Service
+export const settingsService = {
+  getSocialLinks: async () => {
+    const response = await api.get('/settings/social-links')
+    return response.data
+  },
+  updateSocialLinks: async (links) => {
+    const response = await api.put('/settings/social-links', links)
+    return response.data
+  }
+}

@@ -1,9 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from 'react-i18next'
-import { Users, UserPlus, Calendar, FileText, TrendingUp, Activity, Brain, Loader2, AlertCircle } from 'lucide-react'
+import { Users, UserPlus, Calendar, FileText, TrendingUp, Activity, Brain, Loader2, AlertCircle, Share2, Instagram, Twitter, Youtube, Facebook, Linkedin, Save, CheckCircle2 } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { predictionAPI } from '../services/api'
+import { predictionAPI, settingsAPI } from '../services/api'
+import toast from 'react-hot-toast'
+
+const ThreadsIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.186 24h-.007c-3.582-.024-6.334-1.205-8.18-3.511C2.205 18.239 1.486 15.116 1.862 11.2c.48-5.006 3.65-9.15 8.113-10.596C11.393.13 13.016-.07 14.65.023c3.486.2 6.467 1.776 8.39 4.437 1.636 2.264 2.11 5.12 1.334 8.043-.918 3.461-3.418 6.064-6.86 7.143-1.63.51-3.324.63-5.034.356a.75.75 0 01.238-1.48c1.472.237 2.932.133 4.336-.307 2.946-.924 5.087-3.153 5.872-6.113.666-2.508.256-4.962-1.155-6.914-1.656-2.29-4.22-3.647-7.22-3.82-1.405-.08-2.798.093-4.14.526-3.83 1.24-6.55 4.802-6.96 9.096-.32 3.364.296 6.046 1.83 7.973 1.583 1.981 3.947 2.99 7.02 3.01h.007c3.157 0 5.674-.95 7.48-2.825 1.588-1.648 2.378-3.923 2.348-6.764-.02-1.897-.47-3.535-1.34-4.87-.962-1.478-2.346-2.483-4.004-2.906-1.486-.38-3.037-.253-4.484.366-1.57.671-2.756 1.874-3.43 3.477-.66 1.57-.756 3.297-.278 4.993.447 1.585 1.48 2.868 2.91 3.611 1.252.651 2.68.887 4.13.682.385-.054.672.336.56.708-.108.358-.456.577-.837.63-1.708.24-3.39-.036-4.86-.798-1.782-.924-3.07-2.52-3.626-4.493-.596-2.112-.476-4.263.348-6.22.842-2.003 2.324-3.506 4.285-4.344 1.808-.773 3.743-.932 5.6-.458 2.072.528 3.8 1.783 5.002 3.627 1.087 1.666 1.65 3.71 1.674 6.077.037 3.376-.88 6.076-2.726 8.026-2.158 2.24-5.12 3.373-8.8 3.373z"/>
+  </svg>
+)
 
 const Dashboard = () => {
   const { user } = useAuth()
@@ -15,6 +22,54 @@ const Dashboard = () => {
   const [isPredicting, setIsPredicting] = useState(false)
   const [predictionError, setPredictionError] = useState(null)
   const [trainingMessage, setTrainingMessage] = useState(null)
+
+  // Social Links state
+  const [socialLinks, setSocialLinks] = useState({
+    instagram: '',
+    twitter: '',
+    youtube: '',
+    facebook: '',
+    linkedin: '',
+    threads: ''
+  })
+  const [isSavingSocial, setIsSavingSocial] = useState(false)
+  const [isLoadingSocial, setIsLoadingSocial] = useState(false)
+
+  useEffect(() => {
+    fetchSocialLinks()
+  }, [])
+
+  const fetchSocialLinks = async () => {
+    try {
+      setIsLoadingSocial(true)
+      const res = await settingsAPI.getSocialLinks()
+      if (res?.success && res?.data) {
+        setSocialLinks(res.data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch social links:', err)
+    } finally {
+      setIsLoadingSocial(false)
+    }
+  }
+
+  const handleSaveSocialLinks = async (e) => {
+    e.preventDefault()
+    try {
+      setIsSavingSocial(true)
+      const res = await settingsAPI.updateSocialLinks(socialLinks)
+      if (res?.success) {
+        toast.success('Link social media berhasil diperbarui!')
+      } else {
+        toast.error('Gagal memperbarui link social media')
+      }
+    } catch (err) {
+      console.error('Failed to update social links:', err)
+      toast.error(err.response?.data?.error || 'Gagal menyimpan link social media')
+    } finally {
+      setIsSavingSocial(false)
+    }
+  }
 
   const stats = [
     {
@@ -518,6 +573,150 @@ const Dashboard = () => {
             <p className="text-xs mt-2">{t('dashboard.ai.clickPredict')}</p>
           </div>
         )}
+      </div>
+
+      {/* Social Media Links Configuration Section */}
+      <div className="card mt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 mb-6 gap-2">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-50 text-[#0052CC] rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
+              <Share2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base md:text-lg font-bold text-gray-900">Pengaturan Link Social Media Footer</h2>
+              <p className="text-xs text-gray-500">Kelola tautan akun media sosial yang tampil pada bagian footer landing page rumah sakit</p>
+            </div>
+          </div>
+          {user?.role === 'ADMIN' && (
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 self-start sm:self-auto">
+              Akses Admin Active
+            </span>
+          )}
+        </div>
+
+        <form onSubmit={handleSaveSocialLinks} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Instagram */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1.5">
+                <Instagram className="w-4 h-4 text-pink-600" />
+                <span>Instagram</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://instagram.com/namakamu"
+                value={socialLinks.instagram}
+                onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                disabled={user?.role !== 'ADMIN'}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] outline-none disabled:bg-gray-50 transition-all font-medium"
+              />
+            </div>
+
+            {/* Twitter / X */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1.5">
+                <Twitter className="w-4 h-4 text-sky-500" />
+                <span>Twitter / X</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://twitter.com/namakamu"
+                value={socialLinks.twitter}
+                onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
+                disabled={user?.role !== 'ADMIN'}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] outline-none disabled:bg-gray-50 transition-all font-medium"
+              />
+            </div>
+
+            {/* YouTube */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1.5">
+                <Youtube className="w-4 h-4 text-red-600" />
+                <span>YouTube</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://youtube.com/@channelkamu"
+                value={socialLinks.youtube}
+                onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })}
+                disabled={user?.role !== 'ADMIN'}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] outline-none disabled:bg-gray-50 transition-all font-medium"
+              />
+            </div>
+
+            {/* Facebook */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1.5">
+                <Facebook className="w-4 h-4 text-blue-600" />
+                <span>Facebook</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://facebook.com/halamankamu"
+                value={socialLinks.facebook}
+                onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
+                disabled={user?.role !== 'ADMIN'}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] outline-none disabled:bg-gray-50 transition-all font-medium"
+              />
+            </div>
+
+            {/* LinkedIn */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1.5">
+                <Linkedin className="w-4 h-4 text-blue-700" />
+                <span>LinkedIn</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://linkedin.com/company/namaperusahaan"
+                value={socialLinks.linkedin}
+                onChange={(e) => setSocialLinks({ ...socialLinks, linkedin: e.target.value })}
+                disabled={user?.role !== 'ADMIN'}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] outline-none disabled:bg-gray-50 transition-all font-medium"
+              />
+            </div>
+
+            {/* Threads */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1.5">
+                <div className="text-gray-900">
+                  <ThreadsIcon className="w-4 h-4" />
+                </div>
+                <span>Threads</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://threads.net/@namakamu"
+                value={socialLinks.threads}
+                onChange={(e) => setSocialLinks({ ...socialLinks, threads: e.target.value })}
+                disabled={user?.role !== 'ADMIN'}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] outline-none disabled:bg-gray-50 transition-all font-medium"
+              />
+            </div>
+          </div>
+
+          {user?.role === 'ADMIN' && (
+            <div className="pt-4 flex justify-end">
+              <button
+                type="submit"
+                disabled={isSavingSocial || isLoadingSocial}
+                className="px-6 py-2.5 rounded-xl bg-[#0052CC] text-white text-xs font-bold hover:bg-blue-700 transition-all flex items-center space-x-2 shadow-md shadow-blue-600/20 disabled:opacity-50"
+              >
+                {isSavingSocial ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Link Social Media</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </form>
       </div>
     </div>
   )

@@ -19,6 +19,7 @@ const roomRoutes = require('./routes/roomRoutes');
 const inpatientRoutes = require('./routes/inpatientRoutes');
 const predictionRoutes = require('./routes/predictionRoutes');
 const polyclinicRoutes = require('./routes/polyclinicRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -102,6 +103,7 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/inpatients', inpatientRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/polyclinics', polyclinicRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Static files for uploads
 app.use('/uploads', express.static('uploads'));

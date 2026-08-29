@@ -109,4 +109,16 @@ export const predictionAPI = {
   }
 }
 
+// Settings API methods
+export const settingsAPI = {
+  getSocialLinks: async () => {
+    const response = await api.get('/settings/social-links')
+    return response.data
+  },
+  updateSocialLinks: async (links) => {
+    const response = await api.put('/settings/social-links', links)
+    return response.data
+  }
+}
+
 export default api

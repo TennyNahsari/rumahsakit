@@ -7,12 +7,18 @@ import {
   Sparkles, Activity, Clock, Server, Lock, Play, ChevronRight,
   Phone, Mail, UserCheck, X, Check, BarChart3, AlertCircle,
   HeartPulse, Award, MapPin, PhoneCall, Heart, Star, Car, Brain,
-  Languages, ChevronDown
+  Languages, ChevronDown, Instagram, Twitter, Youtube, Facebook, Linkedin
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
 import ThermalTicketModal from '../components/ThermalTicketModal'
+
+const ThreadsIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.186 24h-.007c-3.582-.024-6.334-1.205-8.18-3.511C2.205 18.239 1.486 15.116 1.862 11.2c.48-5.006 3.65-9.15 8.113-10.596C11.393.13 13.016-.07 14.65.023c3.486.2 6.467 1.776 8.39 4.437 1.636 2.264 2.11 5.12 1.334 8.043-.918 3.461-3.418 6.064-6.86 7.143-1.63.51-3.324.63-5.034.356a.75.75 0 01.238-1.48c1.472.237 2.932.133 4.336-.307 2.946-.924 5.087-3.153 5.872-6.113.666-2.508.256-4.962-1.155-6.914-1.656-2.29-4.22-3.647-7.22-3.82-1.405-.08-2.798.093-4.14.526-3.83 1.24-6.55 4.802-6.96 9.096-.32 3.364.296 6.046 1.83 7.973 1.583 1.981 3.947 2.99 7.02 3.01h.007c3.157 0 5.674-.95 7.48-2.825 1.588-1.648 2.378-3.923 2.348-6.764-.02-1.897-.47-3.535-1.34-4.87-.962-1.478-2.346-2.483-4.004-2.906-1.486-.38-3.037-.253-4.484.366-1.57.671-2.756 1.874-3.43 3.477-.66 1.57-.756 3.297-.278 4.993.447 1.585 1.48 2.868 2.91 3.611 1.252.651 2.68.887 4.13.682.385-.054.672.336.56.708-.108.358-.456.577-.837.63-1.708.24-3.39-.036-4.86-.798-1.782-.924-3.07-2.52-3.626-4.493-.596-2.112-.476-4.263.348-6.22.842-2.003 2.324-3.506 4.285-4.344 1.808-.773 3.743-.932 5.6-.458 2.072.528 3.8 1.783 5.002 3.627 1.087 1.666 1.65 3.71 1.674 6.077.037 3.376-.88 6.076-2.726 8.026-2.158 2.24-5.12 3.373-8.8 3.373z"/>
+  </svg>
+)
 
 const Landing = () => {
   const navigate = useNavigate()
@@ -37,6 +43,14 @@ const Landing = () => {
     complaint: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [socialLinks, setSocialLinks] = useState({
+    instagram: 'https://instagram.com',
+    twitter: 'https://twitter.com',
+    youtube: 'https://youtube.com',
+    facebook: 'https://facebook.com',
+    linkedin: 'https://linkedin.com',
+    threads: 'https://threads.net'
+  })
 
   const mapDepartmentToPoly = (dept = '') => {
     if (!dept) return 'Poli Penyakit Dalam'
@@ -56,9 +70,10 @@ const Landing = () => {
 
   const fetchInitialData = async () => {
     try {
-      const [docRes, polyRes] = await Promise.allSettled([
+      const [docRes, polyRes, socialRes] = await Promise.allSettled([
         api.get('/users/public/doctors'),
-        api.get('/polyclinics/public')
+        api.get('/polyclinics/public'),
+        api.get('/settings/social-links')
       ])
 
       if (docRes.status === 'fulfilled' && docRes.value?.data?.data?.doctors) {
@@ -77,6 +92,10 @@ const Landing = () => {
       if (polyRes.status === 'fulfilled' && polyRes.value?.data) {
         const polyList = polyRes.value.data.data?.polyclinics || polyRes.value.data.polyclinics || []
         setDbPolyclinics(polyList)
+      }
+
+      if (socialRes.status === 'fulfilled' && socialRes.value?.data?.data) {
+        setSocialLinks(prev => ({ ...prev, ...socialRes.value.data.data }))
       }
     } catch (err) {
       console.error('Fetch public initial data error:', err)
@@ -928,6 +947,79 @@ const Landing = () => {
                 <MapPin className="w-4 h-4 text-[#0052CC]" />
                 <span>{t('landing.footer.address')}</span>
               </p>
+
+              {/* Social Media Icons */}
+              <div className="pt-2">
+                <p className="text-xs font-bold text-gray-800 mb-2">Media Sosial Kami:</p>
+                <div className="flex items-center space-x-2">
+                  {socialLinks.instagram && (
+                    <a
+                      href={socialLinks.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 hover:bg-pink-600 hover:text-white transition-all flex items-center justify-center border border-pink-100 shadow-sm"
+                      title="Instagram"
+                    >
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  )}
+                  {socialLinks.twitter && (
+                    <a
+                      href={socialLinks.twitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-lg bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white transition-all flex items-center justify-center border border-sky-100 shadow-sm"
+                      title="Twitter / X"
+                    >
+                      <Twitter className="w-4 h-4" />
+                    </a>
+                  )}
+                  {socialLinks.youtube && (
+                    <a
+                      href={socialLinks.youtube}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center border border-red-100 shadow-sm"
+                      title="YouTube"
+                    >
+                      <Youtube className="w-4 h-4" />
+                    </a>
+                  )}
+                  {socialLinks.facebook && (
+                    <a
+                      href={socialLinks.facebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center border border-blue-100 shadow-sm"
+                      title="Facebook"
+                    >
+                      <Facebook className="w-4 h-4" />
+                    </a>
+                  )}
+                  {socialLinks.linkedin && (
+                    <a
+                      href={socialLinks.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center border border-indigo-100 shadow-sm"
+                      title="LinkedIn"
+                    >
+                      <Linkedin className="w-4 h-4" />
+                    </a>
+                  )}
+                  {socialLinks.threads && (
+                    <a
+                      href={socialLinks.threads}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-lg bg-slate-100 text-slate-800 hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center border border-slate-200 shadow-sm"
+                      title="Threads"
+                    >
+                      <ThreadsIcon className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div>
