@@ -5,10 +5,13 @@ import { visitService } from '../services'
 import { 
   Calendar, Clock, User, Search, Download, Filter, Eye, Edit, Trash2, Plus, 
   Volume2, CheckCircle2, Play, SkipForward, Printer, Tv, RefreshCw, AlertCircle,
-  ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Zap, MessageCircle
+  ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Zap, MessageCircle, FileText, CreditCard, Bed
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThermalTicketModal from '../components/ThermalTicketModal'
+import CreateRecordModal from '../components/CreateRecordModal'
+import CreateBillingModal from '../components/CreateBillingModal'
+import CreateInpatientModal from '../components/CreateInpatientModal'
 
 const formatWaNumber = (phone) => {
   if (!phone) return ''
@@ -44,6 +47,33 @@ const Visits = () => {
     startDate: '',
     endDate: ''
   })
+
+  // State for Quick Create Medical Record Modal
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false)
+  const [selectedVisitForRecord, setSelectedVisitForRecord] = useState(null)
+
+  const handleOpenRecordModal = (visit) => {
+    setSelectedVisitForRecord(visit)
+    setIsRecordModalOpen(true)
+  }
+
+  // State for Quick Create Billing Modal
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false)
+  const [selectedVisitForBilling, setSelectedVisitForBilling] = useState(null)
+
+  const handleOpenBillingModal = (visit) => {
+    setSelectedVisitForBilling(visit)
+    setIsBillingModalOpen(true)
+  }
+
+  // State for Quick Check-in Inpatient Modal
+  const [isInpatientModalOpen, setIsInpatientModalOpen] = useState(false)
+  const [selectedVisitForInpatient, setSelectedVisitForInpatient] = useState(null)
+
+  const handleOpenInpatientModal = (visit) => {
+    setSelectedVisitForInpatient(visit)
+    setIsInpatientModalOpen(true)
+  }
 
   const fetchVisits = async (page = 1) => {
     try {
@@ -582,7 +612,59 @@ const Visits = () => {
                             </button>
                           )}
 
-                          {/* 5. Print Ticket POS */}
+                          {/* 5. Medical Record Button (Create or View) */}
+                          {visit.medicalRecords && visit.medicalRecords.length > 0 ? (
+                            <Link
+                              to={`/records/${visit.medicalRecords[0].id}`}
+                              title={t('records.viewRecordTitle', 'Lihat Rekam Medis Pasien')}
+                              className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-700 hover:text-white border border-emerald-300 transition-all text-[11px] font-bold flex items-center space-x-1"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-emerald-700 hover:text-white" />
+                              <span className="hidden lg:inline">{t('records.medicalRecordBtn', 'Rekam Medis')}</span>
+                            </Link>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenRecordModal(visit)}
+                              title={t('records.createRecordTitle', 'Buat Rekam Medis Pasien')}
+                              className="p-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 transition-all text-[11px] font-bold flex items-center space-x-1"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span className="hidden lg:inline">{t('records.addRecordBtn', '+ Rekam Medis')}</span>
+                            </button>
+                          )}
+
+                          {/* 6. Billing Button (Create or View) */}
+                          {visit.billings && visit.billings.length > 0 ? (
+                            <Link
+                              to={`/billing/${visit.billings[0].id}`}
+                              title={t('billing.detail.title', 'Lihat Tagihan / Billing Pasien')}
+                              className="p-1.5 rounded-lg bg-blue-100 text-blue-800 hover:bg-blue-700 hover:text-white border border-blue-300 transition-all text-[11px] font-bold flex items-center space-x-1"
+                            >
+                              <CreditCard className="w-3.5 h-3.5 text-[#0052CC] hover:text-white" />
+                              <span className="hidden lg:inline">{t('billing.title', 'Billing')}</span>
+                            </Link>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenBillingModal(visit)}
+                              title={t('billing.form.quickCreateTitle', 'Buat Tagihan / Billing Baru')}
+                              className="p-1.5 rounded-lg bg-blue-50 text-[#0052CC] hover:bg-[#0052CC] hover:text-white border border-blue-200 transition-all text-[11px] font-bold flex items-center space-x-1"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span className="hidden lg:inline">{t('billing.addBilling', '+ Billing')}</span>
+                            </button>
+                          )}
+
+                          {/* 7. Inpatient Check-in Button */}
+                          <button
+                            onClick={() => handleOpenInpatientModal(visit)}
+                            title={t('inpatients.quickCheckInTitle', 'Check-in Rawat Inap Pasien')}
+                            className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-700 hover:text-white border border-indigo-200 transition-all text-[11px] font-bold flex items-center space-x-1"
+                          >
+                            <Bed className="w-3.5 h-3.5" />
+                            <span className="hidden lg:inline">{t('inpatients.addInpatientBtn', '+ Rawat Inap')}</span>
+                          </button>
+
+                          {/* 6. Print Ticket POS */}
                           <button
                             onClick={() => openPrintTicket(visit)}
                             title="Print Thermal Ticket (58mm/80mm)"
@@ -674,6 +756,39 @@ const Visits = () => {
         isOpen={isTicketModalOpen}
         onClose={() => setIsTicketModalOpen(false)}
         ticketData={selectedTicketData}
+      />
+
+      {/* Quick Create Medical Record Modal */}
+      <CreateRecordModal
+        visit={selectedVisitForRecord}
+        isOpen={isRecordModalOpen}
+        onClose={() => {
+          setIsRecordModalOpen(false)
+          setSelectedVisitForRecord(null)
+        }}
+        onSuccess={() => fetchVisits(currentPage)}
+      />
+
+      {/* Quick Create Billing Modal */}
+      <CreateBillingModal
+        visit={selectedVisitForBilling}
+        isOpen={isBillingModalOpen}
+        onClose={() => {
+          setIsBillingModalOpen(false)
+          setSelectedVisitForBilling(null)
+        }}
+        onSuccess={() => fetchVisits(currentPage)}
+      />
+
+      {/* Quick Check-in Inpatient Modal */}
+      <CreateInpatientModal
+        visit={selectedVisitForInpatient}
+        isOpen={isInpatientModalOpen}
+        onClose={() => {
+          setIsInpatientModalOpen(false)
+          setSelectedVisitForInpatient(null)
+        }}
+        onSuccess={() => fetchVisits(currentPage)}
       />
 
       {/* 7. Export Excel Date Range Modal */}

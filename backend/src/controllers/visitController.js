@@ -101,6 +101,12 @@ const getVisits = async (req, res) => {
               id: true,
               status: true
             }
+          },
+          medicalRecords: {
+            select: {
+              id: true,
+              diagnosis: true
+            }
           }
         }
       }),

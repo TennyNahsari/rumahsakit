@@ -86,18 +86,40 @@ const RecordForm = () => {
     }))
   }
 
+  // Filter eligible visits:
+  // 1. Visit status must be COMPLETED (pemeriksaan sudah selesai)
+  // 2. Billing status must NOT be PAID (belum lunas)
+  const eligibleVisits = visits.filter(v => {
+    if (v.status !== 'COMPLETED') return false
+
+    if (v.billings && v.billings.length > 0) {
+      const isPaid = v.billings.some(b => b.status === 'PAID')
+      if (isPaid) return false
+    }
+
+    return true
+  })
+
+  // Set of patient IDs that have at least 1 eligible completed visit
+  const eligiblePatientIds = new Set(eligibleVisits.map(v => v.patientId))
+
+  // Filter patients list so only patients with eligible completed visits are selectable
+  const eligiblePatients = patients.filter(p => eligiblePatientIds.has(p.id))
+
   // Filtered lists for Autocomplete
-  const filteredPatients = patients.filter(p => {
-    const query = patientSearch.toLowerCase()
+  const filteredPatients = eligiblePatients.filter(p => {
+    const query = patientSearch.toLowerCase().trim()
+    if (!query) return true
     return p.name.toLowerCase().includes(query) || (p.medicalRecordNo && p.medicalRecordNo.toLowerCase().includes(query))
   })
 
   const availableVisits = formData.patientId 
-    ? visits.filter(v => v.patientId === formData.patientId)
-    : visits
+    ? eligibleVisits.filter(v => v.patientId === formData.patientId)
+    : eligibleVisits
 
   const filteredVisits = availableVisits.filter(v => {
-    const query = visitSearch.toLowerCase()
+    const query = visitSearch.toLowerCase().trim()
+    if (!query) return true
     const qNo = (v.queueNumberFormatted || v.queueNumber || '').toLowerCase()
     const pName = (v.patient?.name || '').toLowerCase()
     const typeStr = (v.visitType || '').toLowerCase()
@@ -105,7 +127,8 @@ const RecordForm = () => {
   })
 
   const filteredDoctors = doctors.filter(d => {
-    const query = doctorSearch.toLowerCase()
+    const query = doctorSearch.toLowerCase().trim()
+    if (!query) return true
     return d.name.toLowerCase().includes(query) || (d.department && d.department.toLowerCase().includes(query))
   })
 
@@ -270,7 +293,7 @@ const RecordForm = () => {
                 <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 animate-in fade-in duration-150">
                   {filteredPatients.length === 0 ? (
                     <div className="p-4 text-center text-xs text-gray-500">
-                      Tidak ada pasien ditemukan untuk &quot;<span className="font-bold">{patientSearch}</span>&quot;
+                      Tidak ada pasien dengan kunjungan selesai (COMPLETED) yang belum lunas
                     </div>
                   ) : (
                     filteredPatients.map(patient => {
@@ -343,12 +366,22 @@ const RecordForm = () => {
                 )}
               </div>
 
+              {!formData.patientId ? (
+                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <span>ℹ️ Pilih pasien terlebih dahulu untuk menampilkan kunjungan selesai yang belum lunas.</span>
+                </p>
+              ) : (
+                <p className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1">
+                  <span>✓ Hanya menampilkan kunjungan berstatus Selesai (COMPLETED) yang belum lunas.</span>
+                </p>
+              )}
+
               {/* Visit Dropdown */}
               {isVisitOpen && (
                 <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 animate-in fade-in duration-150">
                   {filteredVisits.length === 0 ? (
                     <div className="p-4 text-center text-xs text-gray-500">
-                      Tidak ada kunjungan ditemukan
+                      Tidak ada kunjungan selesai (COMPLETED) yang belum lunas untuk pasien ini
                     </div>
                   ) : (
                     filteredVisits.map(visit => {
