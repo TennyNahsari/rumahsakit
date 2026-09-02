@@ -20,6 +20,7 @@ const CreateInpatientModal = ({ visit, isOpen, onClose, onSuccess }) => {
     bedNumber: '',
     initialDiagnosis: '',
     estimatedCheckoutAt: '',
+    status: 'PENDING',
     notes: ''
   })
 
@@ -117,6 +118,7 @@ const CreateInpatientModal = ({ visit, isOpen, onClose, onSuccess }) => {
         doctorId: visit.doctorId,
         initialDiagnosis: formData.initialDiagnosis.trim(),
         estimatedCheckoutAt: formData.estimatedCheckoutAt || undefined,
+        status: formData.status,
         notes: formData.notes.trim() || undefined
       }
 
@@ -315,19 +317,19 @@ const CreateInpatientModal = ({ visit, isOpen, onClose, onSuccess }) => {
                 className="w-full text-xs font-medium p-3 rounded-xl border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                {t('inpatients.notes', 'Catatan Perawat / Kamar')}
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows="2"
-                placeholder={t('inpatients.notesPlaceholder', 'Catatan medis atau instruksi khusus...')}
-                className="w-full text-xs font-medium p-3 rounded-xl border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-y"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              {t('inpatients.notes', 'Catatan Perawat / Kamar')}
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows="2"
+              placeholder={t('inpatients.notesPlaceholder', 'Catatan medis atau instruksi khusus...')}
+              className="w-full text-xs font-medium p-3 rounded-xl border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-y"
+            />
           </div>
 
           {/* Modal Actions */}

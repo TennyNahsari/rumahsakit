@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { billingService, patientService, visitService, medicineService } from '../services'
+import { billingService, patientService, visitService, medicineService, inpatientService } from '../services'
 import { 
   ArrowLeft, Save, Plus, Trash2, Search, Check, X, User, Calendar, 
-  ChevronDown, Pill, FileText, AlertTriangle 
+  ChevronDown, Pill, FileText, AlertTriangle, Bed 
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -188,6 +188,62 @@ const BillingForm = () => {
       visitId: ''
     }))
     setVisitSearch('')
+  }
+
+  const handleAddInpatientItem = async () => {
+    if (!formData.patientId) {
+      toast.error(t('billing.form.selectPatientFirst', 'Pilih pasien terlebih dahulu'))
+      return
+    }
+
+    const toastId = toast.loading(t('common.loading', 'Memuat data rawat inap...'))
+    try {
+      const res = await inpatientService.getHistory({ patientId: formData.patientId })
+      toast.dismiss(toastId)
+
+      const historyList = res.data?.history || res.data?.inpatients || res.data || []
+      
+      if (!historyList || historyList.length === 0) {
+        toast.error(t('billing.form.noCheckedOutInpatient', 'Pasien ini tidak memiliki riwayat rawat inap yang sudah check-out'))
+        return
+      }
+
+      const newInpatientItems = historyList.map(occ => {
+        const roomNum = occ.room?.roomNumber || ''
+        const roomType = occ.room?.roomType || ''
+        const days = occ.actualDays || occ.currentDays || 1
+        const pricePerDay = parseFloat(occ.room?.pricePerDay || 0)
+        const totalCost = occ.totalRoomCost ? parseFloat(occ.totalRoomCost) : days * pricePerDay
+        const desc = `Rawat Inap Kamar ${roomNum} (${roomType}) - ${days} Hari (@ Rp ${pricePerDay.toLocaleString('id-ID')})`
+
+        return {
+          type: 'CUSTOM',
+          medicineId: null,
+          medicineSearch: '',
+          isDropdownOpen: false,
+          description: desc,
+          unitPrice: pricePerDay.toString(),
+          qty: days,
+          amount: totalCost.toString(),
+          stockAvailable: null,
+          unit: 'Hari'
+        }
+      })
+
+      setFormData(prev => ({
+        ...prev,
+        items: [
+          ...prev.items.filter(i => i.description || i.medicineId),
+          ...newInpatientItems
+        ]
+      }))
+
+      toast.success(t('billing.form.inpatientAdded', 'Biaya rawat inap berhasil ditambahkan ke rincian tagihan'))
+    } catch (err) {
+      toast.dismiss(toastId)
+      console.error('Fetch inpatient history error:', err)
+      toast.error(t('billing.form.noCheckedOutInpatient', 'Gagal mengambil data rawat inap pasien'))
+    }
   }
 
   // Item Management Helpers
@@ -594,7 +650,7 @@ const BillingForm = () => {
               <p className="text-xs text-gray-500">{t('billing.form.itemsSubtitle', 'Pilih obat dari Master Medicine (stok otomatis berkurang) atau isi layanan kustom.')}</p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => addItem('MEDICINE')}
@@ -602,6 +658,15 @@ const BillingForm = () => {
               >
                 <Pill className="w-3.5 h-3.5" />
                 <span>{t('billing.form.addMedicineItem', '+ Obat (Medicine)')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAddInpatientItem}
+                className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-300 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
+              >
+                <Bed className="w-3.5 h-3.5" />
+                <span>{t('billing.form.addInpatientItem', '+ Tagihan Rawat Inap')}</span>
               </button>
 
               <button

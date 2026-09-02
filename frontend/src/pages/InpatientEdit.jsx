@@ -64,6 +64,7 @@ const InpatientEdit = () => {
       setFormData({
         roomId: occ.room?.id?.toString() || '',
         bedNumber: occ.bedNumber?.toString() || '',
+        status: occ.status || 'CHECKED_IN',
         notes: occ.notes || ''
       })
 
@@ -140,13 +141,14 @@ const InpatientEdit = () => {
       setSubmitting(true)
       
       const updateData = {
-        newRoomId: parseInt(formData.roomId),
-        newBedNumber: formData.bedNumber ? parseInt(formData.bedNumber) : undefined,
+        roomId: parseInt(formData.roomId),
+        bedNumber: formData.bedNumber ? parseInt(formData.bedNumber) : undefined,
+        status: formData.status,
         notes: formData.notes || undefined
       }
 
       await inpatientService.updateOccupancy(id, updateData)
-      toast.success(t('inpatients.updateSuccess', 'Kamar berhasil diperbarui'))
+      toast.success(t('inpatients.updateSuccess', 'Data rawat inap berhasil diperbarui'))
       navigate(`/inpatients/${id}`)
     } catch (error) {
       toast.error(error.response?.data?.error || t('inpatients.updateFailed', 'Gagal memperbarui kamar rawat inap'))
@@ -163,11 +165,11 @@ const InpatientEdit = () => {
     )
   }
 
-  if (!occupancy || occupancy.status !== 'ACTIVE') {
+  if (!occupancy || occupancy.status === 'CHECKED_OUT' || occupancy.status === 'CANCELLED') {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
-        <p className="text-gray-600">{t('inpatients.cannotEdit', 'Rawat inap ini sudah selesai dan tidak dapat diubah.')}</p>
+        <p className="text-gray-600">{t('inpatients.cannotEdit', 'Rawat inap ini sudah selesai atau dibatalkan dan tidak dapat diubah.')}</p>
         <button
           onClick={() => navigate('/inpatients')}
           className="mt-4 btn bg-primary-600 text-white hover:bg-primary-700"
@@ -350,6 +352,26 @@ const InpatientEdit = () => {
               </p>
             </div>
 
+            {/* Status Inpatient Selection */}
+            <div>
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+                {t('inpatients.statusLabel', 'Status Rawat Inap Pasien')}
+              </label>
+              <select
+                id="status"
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="input text-sm font-bold"
+              >
+                <option value="PENDING">{i18n.language === 'id' ? '🟡 Pending (Menunggu Persetujuan)' : '🟡 Pending Approval'}</option>
+                <option value="CONFIRMED">{i18n.language === 'id' ? '🔵 Confirmed (Terkonfirmasi)' : '🔵 Confirmed'}</option>
+                <option value="CHECKED_IN">{i18n.language === 'id' ? '🟢 Check-in (Aktif Dirawat)' : '🟢 Check-in (Active)'}</option>
+                <option value="CHECKED_OUT">{i18n.language === 'id' ? '⚪ Check-out (Selesai Rawat Inap)' : '⚪ Checked-out'}</option>
+                <option value="CANCELLED">{i18n.language === 'id' ? '🔴 Cancelled (Dibatalkan)' : '🔴 Cancelled'}</option>
+              </select>
+            </div>
+
             {/* Reason for Change Notes */}
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
@@ -406,8 +428,8 @@ const InpatientEdit = () => {
           </button>
           <button
             type="submit"
-            disabled={submitting || !isRoomChanged}
-            className="btn btn-primary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={submitting}
+            className="btn btn-primary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {submitting ? (
               <>
@@ -417,7 +439,7 @@ const InpatientEdit = () => {
             ) : (
               <>
                 <Save className="w-4 h-4 mr-2" />
-                {t('inpatients.saveChanges', 'Simpan Kepindahan Kamar')}
+                {t('inpatients.saveChanges', 'Simpan Perubahan')}
               </>
             )}
           </button>

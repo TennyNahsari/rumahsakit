@@ -41,6 +41,7 @@ const CheckInForm = () => {
     doctorId: '',
     initialDiagnosis: '',
     estimatedCheckoutAt: '',
+    status: 'PENDING',
     notes: ''
   })
 

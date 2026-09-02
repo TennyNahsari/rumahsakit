@@ -6,6 +6,8 @@ const {
   getInpatient,
   checkInPatient,
   updateOccupancy,
+  updateStatus,
+  deleteInpatient,
   checkOutPatient,
   getOccupancyHistory,
   exportHistoryExcel
@@ -37,8 +39,18 @@ router.post('/check-in', [
   body('checkedInAt').optional().isISO8601(),
   body('estimatedCheckoutAt').optional().isISO8601(),
   body('careClass').optional().isString(),
+  body('status').optional().isIn(['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ACTIVE']),
   body('notes').optional().isString()
 ], checkInPatient);
+
+// @route   PATCH /api/inpatients/:id/status
+// @desc    Update inpatient status (PENDING, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED)
+// @access  Private (Admin, Nurse, Front Desk)
+router.patch('/:id/status', [
+  auth,
+  authorize('ADMIN', 'NURSE', 'FRONT_DESK'),
+  body('status').isIn(['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ACTIVE', 'CHECKED_OUT', 'CANCELLED']).withMessage('Valid status is required')
+], updateStatus);
 
 // @route   POST /api/inpatients/:id/check-out
 // @desc    Check-out patient from room
@@ -63,15 +75,24 @@ router.get('/', auth, getInpatients);
 router.get('/:id', auth, getInpatient);
 
 // @route   PUT /api/inpatients/:id
-// @desc    Update occupancy (change room, etc)
-// @access  Private (Admin, Nurse)
+// @desc    Update occupancy (change room, doctor, diagnosis, status, etc)
+// @access  Private (Admin, Nurse, Front Desk)
 router.put('/:id', [
   auth,
-  authorize('ADMIN', 'NURSE'),
+  authorize('ADMIN', 'NURSE', 'FRONT_DESK'),
   body('roomId').optional().isInt(),
   body('bedNumber').optional().isInt({ min: 1 }),
   body('doctorId').optional().isInt(),
-  body('estimatedCheckoutAt').optional().isISO8601()
+  body('estimatedCheckoutAt').optional().isISO8601(),
+  body('status').optional().isIn(['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ACTIVE', 'CHECKED_OUT', 'CANCELLED'])
 ], updateOccupancy);
+
+// @route   DELETE /api/inpatients/:id
+// @desc    Delete inpatient occupancy record
+// @access  Private (Admin, Nurse, Front Desk)
+router.delete('/:id', [
+  auth,
+  authorize('ADMIN', 'NURSE', 'FRONT_DESK')
+], deleteInpatient);
 
 module.exports = router;

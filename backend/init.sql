@@ -46,7 +46,7 @@ CREATE TYPE "QueueChannel" AS ENUM ('ONLINE_WEBSITE', 'ONSITE_LOKET');
 CREATE TYPE "VisitStatus" AS ENUM ('SCHEDULED', 'CALLED', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED', 'CANCELLED', 'NO_SHOW');
 CREATE TYPE "RoomType" AS ENUM ('VIP', 'KELAS_1', 'KELAS_2', 'KELAS_3', 'ICU', 'NICU', 'PICU', 'ISOLATION');
 CREATE TYPE "RoomStatus" AS ENUM ('AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'CLEANING', 'RESERVED');
-CREATE TYPE "OccupancyStatus" AS ENUM ('ACTIVE', 'CHECKED_OUT');
+CREATE TYPE "OccupancyStatus" AS ENUM ('PENDING', 'CONFIRMED', 'CHECKED_IN', 'ACTIVE', 'CHECKED_OUT', 'CANCELLED');
 CREATE TYPE "DischargeCondition" AS ENUM ('SEMBUH', 'MEMBAIK', 'RUJUK', 'MENINGGAL', 'APS');
 CREATE TYPE "BillingStatus" AS ENUM ('UNPAID', 'PARTIALLY_PAID', 'PAID', 'CANCELLED');
 
@@ -300,3 +300,10 @@ GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO rumahsakit;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO rumahsakit;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO rumahsakit;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO rumahsakit;
+
+-- -----------------------------------------------------------------------------
+-- INITIAL SEED DATA (DEFAULT ADMIN USER LOGIN)
+-- -----------------------------------------------------------------------------
+INSERT INTO "users" ("name", "email", "password", "role", "department", "phone", "is_active")
+VALUES ('Administrator Sistem', 'admin@klinik.com', '$2a$12$gfpy/BnnOI66KlBc3Iy6U.0w64rMcGoIgUkRu08M0Sf/Hc/nSuAUi', 'ADMIN', 'Administrasi', '+6281234567890', true)
+ON CONFLICT ("email") DO NOTHING;

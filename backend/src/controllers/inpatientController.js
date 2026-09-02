@@ -48,12 +48,20 @@ const getInpatients = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     
-    const { roomType, floor, doctorId, search, startDate, endDate } = req.query;
+    const { roomType, floor, doctorId, search, startDate, endDate, status } = req.query;
     
     // Build where clause
-    const where = {
-      status: 'ACTIVE'
-    };
+    const where = {};
+
+    if (status && status !== 'ALL') {
+      if (status === 'CHECKED_IN') {
+        where.status = { in: ['CHECKED_IN', 'ACTIVE'] };
+      } else {
+        where.status = status;
+      }
+    } else if (!status) {
+      where.status = { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ACTIVE'] };
+    }
     
     if (search) {
       where.OR = [
@@ -239,21 +247,24 @@ const checkInPatient = async (req, res) => {
       estimatedCheckoutAt,
       initialDiagnosis,
       careClass,
-      notes
+      notes,
+      status
     } = req.body;
     
-    // Check if patient already has active occupancy
+    const occupancyStatus = status || 'PENDING';
+
+    // Check if patient already has active or ongoing occupancy
     const existingOccupancy = await prisma.roomOccupancy.findFirst({
       where: {
         patientId: parseInt(patientId),
-        status: 'ACTIVE'
+        status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ACTIVE'] }
       }
     });
     
     if (existingOccupancy) {
       return res.status(400).json({
         success: false,
-        error: 'Patient already has an active room occupancy'
+        error: 'Patient already has an active or pending room occupancy'
       });
     }
     
@@ -262,7 +273,7 @@ const checkInPatient = async (req, res) => {
       where: { id: parseInt(roomId) },
       include: {
         occupancies: {
-          where: { status: 'ACTIVE' }
+          where: { status: { in: ['CHECKED_IN', 'ACTIVE'] } }
         }
       }
     });
@@ -299,9 +310,6 @@ const checkInPatient = async (req, res) => {
       }
     }
     
-    // Check if room will be fully occupied
-    const willBeFullyOccupied = room.occupancies.length + 1 >= room.bedCapacity;
-    
     // Generate registration number
     const registrationNumber = await generateRegistrationNumber();
     
@@ -317,7 +325,8 @@ const checkInPatient = async (req, res) => {
         estimatedCheckoutAt: estimatedCheckoutAt ? new Date(estimatedCheckoutAt) : null,
         initialDiagnosis,
         careClass,
-        notes
+        notes,
+        status: occupancyStatus
       },
       include: {
         patient: true,
@@ -331,13 +340,18 @@ const checkInPatient = async (req, res) => {
       }
     });
     
-    // Update room status
-    await prisma.room.update({
-      where: { id: parseInt(roomId) },
-      data: {
-        status: willBeFullyOccupied ? 'OCCUPIED' : 'OCCUPIED'
-      }
-    });
+    // Update room status based on occupancy status
+    if (occupancyStatus === 'CHECKED_IN' || occupancyStatus === 'ACTIVE') {
+      await prisma.room.update({
+        where: { id: parseInt(roomId) },
+        data: { status: 'OCCUPIED' }
+      });
+    } else if (occupancyStatus === 'CONFIRMED') {
+      await prisma.room.update({
+        where: { id: parseInt(roomId) },
+        data: { status: 'RESERVED' }
+      });
+    }
     
     res.status(201).json({
       success: true,
@@ -353,7 +367,7 @@ const checkInPatient = async (req, res) => {
   }
 };
 
-// @desc    Update occupancy (change room)
+// @desc    Update occupancy (change room, doctor, diagnosis, status, etc)
 // @route   PUT /api/inpatients/:id
 // @access  Private
 const updateOccupancy = async (req, res) => {
@@ -366,7 +380,8 @@ const updateOccupancy = async (req, res) => {
       estimatedCheckoutAt,
       initialDiagnosis,
       careClass,
-      notes
+      notes,
+      status
     } = req.body;
     
     const occupancy = await prisma.roomOccupancy.findUnique({
@@ -381,10 +396,10 @@ const updateOccupancy = async (req, res) => {
       });
     }
     
-    if (occupancy.status !== 'ACTIVE') {
+    if (occupancy.status === 'CHECKED_OUT' || occupancy.status === 'CANCELLED') {
       return res.status(400).json({
         success: false,
-        error: 'Cannot update inactive occupancy'
+        error: 'Cannot update finished or cancelled occupancy'
       });
     }
     
@@ -397,7 +412,7 @@ const updateOccupancy = async (req, res) => {
         where: { id: parseInt(roomId) },
         include: {
           occupancies: {
-            where: { status: 'ACTIVE' }
+            where: { status: { in: ['CHECKED_IN', 'ACTIVE'] } }
           }
         }
       });
@@ -441,7 +456,7 @@ const updateOccupancy = async (req, res) => {
       const oldRoomActiveOccupancies = await prisma.roomOccupancy.count({
         where: {
           roomId: occupancy.roomId,
-          status: 'ACTIVE',
+          status: { in: ['CHECKED_IN', 'ACTIVE'] },
           id: { not: parseInt(id) }
         }
       });
@@ -461,6 +476,32 @@ const updateOccupancy = async (req, res) => {
       });
     }
     
+    // Handle status change side-effects
+    const newStatus = status || occupancy.status;
+    if (newStatus !== occupancy.status) {
+      if ((newStatus === 'CHECKED_IN' || newStatus === 'ACTIVE') && occupancy.status !== 'CHECKED_IN' && occupancy.status !== 'ACTIVE') {
+        await prisma.room.update({
+          where: { id: newRoomId },
+          data: { status: 'OCCUPIED' }
+        });
+      } else if (newStatus === 'CONFIRMED' && occupancy.status !== 'CONFIRMED') {
+        await prisma.room.update({
+          where: { id: newRoomId },
+          data: { status: 'RESERVED' }
+        });
+      } else if (newStatus === 'CHECKED_OUT' && occupancy.status !== 'CHECKED_OUT') {
+        await prisma.room.update({
+          where: { id: newRoomId },
+          data: { status: 'CLEANING' }
+        });
+      } else if (newStatus === 'CANCELLED' && occupancy.status !== 'CANCELLED') {
+        await prisma.room.update({
+          where: { id: newRoomId },
+          data: { status: 'AVAILABLE' }
+        });
+      }
+    }
+
     // Update occupancy
     const updatedOccupancy = await prisma.roomOccupancy.update({
       where: { id: parseInt(id) },
@@ -471,7 +512,8 @@ const updateOccupancy = async (req, res) => {
         ...(estimatedCheckoutAt && { estimatedCheckoutAt: new Date(estimatedCheckoutAt) }),
         ...(initialDiagnosis !== undefined && { initialDiagnosis }),
         ...(careClass !== undefined && { careClass }),
-        ...(notes !== undefined && { notes })
+        ...(notes !== undefined && { notes }),
+        ...(status && { status: newStatus })
       },
       include: {
         patient: true,
@@ -850,11 +892,158 @@ const exportHistoryExcel = async (req, res) => {
   }
 };
 
+// @desc    Update inpatient status (PENDING, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED)
+// @route   PATCH /api/inpatients/:id/status
+// @access  Private (Admin, Nurse, Front Desk)
+const updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+
+    if (!['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ACTIVE', 'CHECKED_OUT', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status'
+      });
+    }
+
+    const occupancy = await prisma.roomOccupancy.findUnique({
+      where: { id: parseInt(id) },
+      include: { room: true }
+    });
+
+    if (!occupancy) {
+      return res.status(404).json({
+        success: false,
+        error: 'Occupancy not found'
+      });
+    }
+
+    const oldStatus = occupancy.status;
+    const updateData = { status };
+    if (notes !== undefined) updateData.notes = notes;
+
+    if ((status === 'CHECKED_IN' || status === 'ACTIVE') && oldStatus !== 'CHECKED_IN' && oldStatus !== 'ACTIVE') {
+      updateData.checkedInAt = new Date();
+      await prisma.room.update({
+        where: { id: occupancy.roomId },
+        data: { status: 'OCCUPIED' }
+      });
+    } else if (status === 'CONFIRMED' && oldStatus !== 'CONFIRMED') {
+      await prisma.room.update({
+        where: { id: occupancy.roomId },
+        data: { status: 'RESERVED' }
+      });
+    } else if (status === 'CHECKED_OUT' && oldStatus !== 'CHECKED_OUT') {
+      updateData.checkedOutAt = new Date();
+      const actualDays = calculateDays(occupancy.checkedInAt || new Date(), new Date());
+      updateData.actualDays = actualDays;
+      updateData.totalRoomCost = actualDays * parseFloat(occupancy.room.pricePerDay || 0);
+
+      await prisma.room.update({
+        where: { id: occupancy.roomId },
+        data: { status: 'CLEANING' }
+      });
+    } else if (status === 'CANCELLED' && oldStatus !== 'CANCELLED') {
+      await prisma.room.update({
+        where: { id: occupancy.roomId },
+        data: { status: 'AVAILABLE' }
+      });
+    }
+
+    const updated = await prisma.roomOccupancy.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      include: {
+        patient: true,
+        room: true,
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            department: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: { occupancy: updated },
+      message: `Status updated to ${status}`
+    });
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while updating status'
+    });
+  }
+};
+
+// @desc    Delete inpatient occupancy record
+// @route   DELETE /api/inpatients/:id
+// @access  Private (Admin, Nurse, Front Desk)
+const deleteInpatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const occupancy = await prisma.roomOccupancy.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!occupancy) {
+      return res.status(404).json({
+        success: false,
+        error: 'Inpatient record not found'
+      });
+    }
+
+    const roomId = occupancy.roomId;
+    const oldStatus = occupancy.status;
+
+    // Delete occupancy
+    await prisma.roomOccupancy.delete({
+      where: { id: parseInt(id) }
+    });
+
+    // Check if room has remaining active/pending occupancies
+    if (['CHECKED_IN', 'ACTIVE', 'CONFIRMED', 'PENDING'].includes(oldStatus)) {
+      const remainingOccupancies = await prisma.roomOccupancy.count({
+        where: {
+          roomId: roomId,
+          status: { in: ['CHECKED_IN', 'ACTIVE', 'CONFIRMED', 'PENDING'] }
+        }
+      });
+
+      if (remainingOccupancies === 0) {
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { status: 'AVAILABLE' }
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Inpatient record deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete inpatient error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while deleting inpatient record'
+    });
+  }
+};
+
 module.exports = {
   getInpatients,
   getInpatient,
   checkInPatient,
   updateOccupancy,
+  updateStatus,
+  deleteInpatient,
   checkOutPatient,
   getOccupancyHistory,
   exportHistoryExcel

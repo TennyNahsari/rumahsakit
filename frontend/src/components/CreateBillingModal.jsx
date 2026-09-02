@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { billingService, medicineService } from '../services'
-import { X, CreditCard, User, Calendar, Save, Plus, Trash2, Search, Pill, FileText } from 'lucide-react'
+import { billingService, medicineService, inpatientService } from '../services'
+import { X, CreditCard, User, Calendar, Save, Plus, Trash2, Search, Pill, FileText, Bed } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const CreateBillingModal = ({ visit, isOpen, onClose, onSuccess }) => {
@@ -58,6 +58,62 @@ const CreateBillingModal = ({ visit, isOpen, onClose, onSuccess }) => {
       setMedicines(res.data?.medicines || res.data || [])
     } catch (err) {
       console.error('Fetch medicines error:', err)
+    }
+  }
+
+  const handleAddInpatientItem = async () => {
+    if (!visit?.patientId) {
+      toast.error(t('billing.form.selectPatientFirst', 'Pasien tidak ditemukan'))
+      return
+    }
+
+    const toastId = toast.loading(t('common.loading', 'Memuat data rawat inap...'))
+    try {
+      const res = await inpatientService.getHistory({ patientId: visit.patientId })
+      toast.dismiss(toastId)
+
+      const historyList = res.data?.history || res.data?.inpatients || res.data || []
+      
+      if (!historyList || historyList.length === 0) {
+        toast.error(t('billing.form.noCheckedOutInpatient', 'Pasien ini tidak memiliki riwayat rawat inap yang sudah check-out'))
+        return
+      }
+
+      const newInpatientItems = historyList.map(occ => {
+        const roomNum = occ.room?.roomNumber || ''
+        const roomType = occ.room?.roomType || ''
+        const days = occ.actualDays || occ.currentDays || 1
+        const pricePerDay = parseFloat(occ.room?.pricePerDay || 0)
+        const totalCost = occ.totalRoomCost ? parseFloat(occ.totalRoomCost) : days * pricePerDay
+        const desc = `Rawat Inap Kamar ${roomNum} (${roomType}) - ${days} Hari (@ Rp ${pricePerDay.toLocaleString('id-ID')})`
+
+        return {
+          type: 'CUSTOM',
+          medicineId: null,
+          medicineSearch: '',
+          isDropdownOpen: false,
+          description: desc,
+          unitPrice: pricePerDay.toString(),
+          qty: days,
+          amount: totalCost.toString(),
+          stockAvailable: null,
+          unit: 'Hari'
+        }
+      })
+
+      setFormData(prev => ({
+        ...prev,
+        items: [
+          ...prev.items.filter(i => i.description || i.medicineId),
+          ...newInpatientItems
+        ]
+      }))
+
+      toast.success(t('billing.form.inpatientAdded', 'Biaya rawat inap berhasil ditambahkan ke rincian tagihan'))
+    } catch (err) {
+      toast.dismiss(toastId)
+      console.error('Fetch inpatient history error:', err)
+      toast.error(t('billing.form.noCheckedOutInpatient', 'Gagal mengambil data rawat inap pasien'))
     }
   }
 
@@ -301,7 +357,7 @@ const CreateBillingModal = ({ visit, isOpen, onClose, onSuccess }) => {
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
                 {t('billing.form.items', 'Rincian Item Tagihan')}
               </h3>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => addItem('MEDICINE')}
@@ -309,6 +365,14 @@ const CreateBillingModal = ({ visit, isOpen, onClose, onSuccess }) => {
                 >
                   <Pill className="w-3 h-3" />
                   <span>{t('billing.form.addMedicineItem', '+ Obat')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddInpatientItem}
+                  className="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-300 text-[11px] font-bold rounded-lg flex items-center gap-1"
+                >
+                  <Bed className="w-3 h-3" />
+                  <span>{t('billing.form.addInpatientItem', '+ Tagihan Rawat Inap')}</span>
                 </button>
                 <button
                   type="button"

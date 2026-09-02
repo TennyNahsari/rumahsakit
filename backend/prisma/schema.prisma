@@ -315,8 +315,12 @@ enum RoomStatus {
 }
 
 enum OccupancyStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
   ACTIVE
   CHECKED_OUT
+  CANCELLED
 }
 
 enum DischargeCondition {
