@@ -303,7 +303,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO rumahsakit;
 
 -- -----------------------------------------------------------------------------
 -- INITIAL SEED DATA (DEFAULT ADMIN USER LOGIN)
+-- Password default: admin123
 -- -----------------------------------------------------------------------------
 INSERT INTO "users" ("name", "email", "password", "role", "department", "phone", "is_active")
 VALUES ('Administrator Sistem', 'admin@klinik.com', '$2a$12$gfpy/BnnOI66KlBc3Iy6U.0w64rMcGoIgUkRu08M0Sf/Hc/nSuAUi', 'ADMIN', 'Administrasi', '+6281234567890', true)
 ON CONFLICT ("email") DO NOTHING;
+
