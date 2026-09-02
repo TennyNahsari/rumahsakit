@@ -408,10 +408,10 @@ const CheckInForm = () => {
                           <div className="space-y-0.5">
                             <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
                               <Bed className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Kamar {room.roomNumber} {room.roomName ? `- ${room.roomName}` : ''}</span>
+                              <span>{t('billing.form.roomLabel', 'Kamar')} {room.roomNumber} {room.roomName ? `- ${room.roomName}` : ''}</span>
                             </p>
                             <p className="text-[11px] text-gray-500">
-                              {roomTypeName} • {i18n.language === 'id' ? 'Lantai' : 'Floor'} {room.floor} • Rp {(room.pricePerDay || 0).toLocaleString('id-ID')}/{i18n.language === 'id' ? 'hari' : 'day'}
+                              {roomTypeName} • {t('rooms.floor', 'Lantai')} {room.floor} • Rp {(room.pricePerDay || 0).toLocaleString(i18n.language === 'id' ? 'id-ID' : 'en-US')}/{t('inpatients.perDay', 'hari')}
                             </p>
                           </div>
                           {isSelected && <Check className="w-4 h-4 text-emerald-600" />}
@@ -424,7 +424,7 @@ const CheckInForm = () => {
 
               {selectedRoom && (
                 <p className="mt-2 text-xs text-emerald-700 font-medium bg-emerald-50 p-2 rounded-lg border border-emerald-200">
-                  Kapasitas: {selectedRoom.bedCapacity} Bed | Tersedia: {selectedRoom.availableBeds || selectedRoom.bedCapacity} Bed | Rp {(selectedRoom.pricePerDay || 0).toLocaleString('id-ID')}/hari
+                  {t('inpatients.capacity', 'Kapasitas')}: {selectedRoom.bedCapacity} Bed | {t('inpatients.available', 'Tersedia')}: {selectedRoom.availableBeds || selectedRoom.bedCapacity} Bed | Rp {(selectedRoom.pricePerDay || 0).toLocaleString(i18n.language === 'id' ? 'id-ID' : 'en-US')}/{t('inpatients.perDay', 'hari')}
                 </p>
               )}
             </div>
@@ -442,7 +442,7 @@ const CheckInForm = () => {
                 onChange={handleChange}
                 min="1"
                 max={selectedRoom?.bedCapacity || 99}
-                placeholder={selectedRoom ? `1 - ${selectedRoom.bedCapacity}` : 'Pilih kamar terlebih dahulu'}
+                placeholder={selectedRoom ? `1 - ${selectedRoom.bedCapacity}` : t('inpatients.selectRoomFirst', 'Pilih kamar terlebih dahulu')}
                 disabled={!formData.roomId}
                 className="input text-sm font-medium disabled:bg-gray-100 disabled:cursor-not-allowed"
               />

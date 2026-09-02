@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { billingService, medicineService } from '../services'
+import { billingService, medicineService, inpatientService } from '../services'
 import { 
-  ArrowLeft, Save, Plus, Trash2, Search, Pill, FileText, AlertTriangle 
+  ArrowLeft, Save, Plus, Trash2, Search, Pill, FileText, AlertTriangle, Bed, X 
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -75,6 +75,7 @@ const BillingEdit = () => {
       })
 
       setFormData({
+        patientId: billing.patientId || billing.patient?.id || null,
         patientName: billing.patient?.name || '',
         items: parsedItems.length > 0 ? parsedItems : [{
           type: 'MEDICINE',
@@ -98,6 +99,75 @@ const BillingEdit = () => {
       navigate('/billing')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const [inpatientPicker, setInpatientPicker] = useState({ isOpen: false, list: [] })
+
+  const addInpatientToBilling = (occ) => {
+    const roomNum = occ.room?.roomNumber || ''
+    const roomType = occ.room?.roomType || ''
+    const days = occ.actualDays || occ.currentDays || 1
+    const pricePerDay = parseFloat(occ.room?.pricePerDay || 0)
+    const totalCost = occ.totalRoomCost ? parseFloat(occ.totalRoomCost) : days * pricePerDay
+    const roomTxt = t('billing.form.roomLabel', 'Kamar')
+    const daysTxt = t('billing.form.daysLabel', 'Hari')
+    const priceFormatted = pricePerDay.toLocaleString(i18n.language === 'id' ? 'id-ID' : 'en-US')
+    const desc = `${t('billing.form.addInpatientItem', 'Rawat Inap')} ${roomTxt} ${roomNum} (${roomType}) - ${days} ${daysTxt} (@ Rp ${priceFormatted})`
+
+    setFormData(prev => ({
+      ...prev,
+      items: [
+        ...prev.items.filter(i => (i.description ? String(i.description).trim().length > 0 : false) || i.medicineId),
+        {
+          type: 'CUSTOM',
+          medicineId: null,
+          medicineSearch: '',
+          isDropdownOpen: false,
+          description: desc,
+          unitPrice: pricePerDay.toString(),
+          qty: days,
+          amount: totalCost.toString(),
+          stockAvailable: null,
+          unit: daysTxt
+        }
+      ]
+    }))
+
+    toast.success(t('billing.form.inpatientAdded', 'Biaya rawat inap berhasil ditambahkan ke rincian tagihan'))
+    setInpatientPicker({ isOpen: false, list: [] })
+  }
+
+  const handleAddInpatientItem = async () => {
+    if (!formData.patientId) {
+      toast.error(t('billing.form.selectPatientFirst', 'Pasien tidak ditemukan'))
+      return
+    }
+
+    const toastId = toast.loading(t('common.loading', 'Memuat data rawat inap...'))
+    try {
+      const res = await inpatientService.getHistory({ patientId: formData.patientId })
+      toast.dismiss(toastId)
+
+      const historyList = res.data?.history || res.data?.inpatients || res.data || []
+      
+      if (!historyList || historyList.length === 0) {
+        toast.error(t('billing.form.noCheckedOutInpatient', 'Pasien ini tidak memiliki riwayat rawat inap yang sudah check-out'))
+        return
+      }
+
+      if (historyList.length === 1) {
+        addInpatientToBilling(historyList[0])
+      } else {
+        setInpatientPicker({
+          isOpen: true,
+          list: historyList
+        })
+      }
+    } catch (err) {
+      toast.dismiss(toastId)
+      console.error('Fetch inpatient history error:', err)
+      toast.error(t('billing.form.noCheckedOutInpatient', 'Gagal mengambil data rawat inap pasien'))
     }
   }
 
@@ -348,7 +418,7 @@ const BillingEdit = () => {
               <p className="text-xs text-gray-500">{t('billing.form.itemsSubtitle', 'Pilih obat dari Master Medicine (stok otomatis berkurang) atau isi layanan kustom.')}</p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => addItem('MEDICINE')}
@@ -356,6 +426,15 @@ const BillingEdit = () => {
               >
                 <Pill className="w-3.5 h-3.5" />
                 <span>{t('billing.form.addMedicineItem', '+ Obat (Medicine)')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAddInpatientItem}
+                className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-300 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
+              >
+                <Bed className="w-3.5 h-3.5" />
+                <span>{t('billing.form.addInpatientItem', '+ Tagihan Rawat Inap')}</span>
               </button>
 
               <button
@@ -707,6 +786,81 @@ const BillingEdit = () => {
           </button>
         </div>
       </form>
+
+      {/* Inpatient Picker Modal (If patient has multiple checked-out stays) */}
+      {inpatientPicker.isOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 border border-gray-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2">
+                <Bed className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-gray-900">
+                  {t('billing.form.selectInpatientStay', 'Pilih Riwayat Rawat Inap Pasien')}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInpatientPicker({ isOpen: false, list: [] })}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              {t('billing.form.multipleInpatientNote', 'Pasien ini memiliki {{count}} riwayat rawat inap yang sudah check-out. Silakan pilih rawat inap yang ingin dimasukkan ke tagihan:', { count: inpatientPicker.list.length })}
+            </p>
+
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {inpatientPicker.list.map((occ, idx) => {
+                const roomNum = occ.room?.roomNumber || ''
+                const roomType = occ.room?.roomType || ''
+                const days = occ.actualDays || occ.currentDays || 1
+                const pricePerDay = parseFloat(occ.room?.pricePerDay || 0)
+                const totalCost = occ.totalRoomCost ? parseFloat(occ.totalRoomCost) : days * pricePerDay
+                const checkInDateStr = occ.checkedInAt ? new Date(occ.checkedInAt).toLocaleDateString(i18n.language === 'id' ? 'id-ID' : 'en-US') : '-'
+                const checkOutDateStr = occ.checkedOutAt ? new Date(occ.checkedOutAt).toLocaleDateString(i18n.language === 'id' ? 'id-ID' : 'en-US') : '-'
+
+                return (
+                  <div key={occ.id || idx} className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50/50 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-gray-900">{t('billing.form.roomLabel', 'Kamar')} {roomNum} ({roomType})</span>
+                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 font-bold text-[10px] rounded-full">{t('billing.form.regNoLabel', 'No. Reg')}: {occ.registrationNumber}</span>
+                      </div>
+                      <p className="text-xs text-gray-600">
+                        🗓️ {checkInDateStr} {t('billing.form.toLabel', 's/d')} {checkOutDateStr} ({days} {t('billing.form.daysLabel', 'Hari')} @ Rp {pricePerDay.toLocaleString(i18n.language === 'id' ? 'id-ID' : 'en-US')})
+                      </p>
+                      <p className="text-xs font-bold text-emerald-700">
+                        {t('billing.form.totalCostLabel', 'Total Biaya')}: Rp {totalCost.toLocaleString(i18n.language === 'id' ? 'id-ID' : 'en-US')}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => addInpatientToBilling(occ)}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors shadow-sm flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{t('billing.form.selectThisInpatient', 'Pilih Rawat Inap Ini')}</span>
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="pt-2 border-t flex justify-end">
+              <button
+                type="button"
+                onClick={() => setInpatientPicker({ isOpen: false, list: [] })}
+                className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold rounded-lg"
+              >
+                {t('common.cancel', 'Batal')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -249,10 +249,10 @@ const CreateInpatientModal = ({ visit, isOpen, onClose, onSuccess }) => {
                         <div className="space-y-0.5">
                           <p className="font-bold text-gray-900 flex items-center gap-1.5">
                             <Bed className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>{roomPrefix} {room.roomNumber} {room.roomName ? `- ${room.roomName}` : ''}</span>
+                            <span>{t('billing.form.roomLabel', 'Kamar')} {room.roomNumber} {room.roomName ? `- ${room.roomName}` : ''}</span>
                           </p>
                           <p className="text-[10px] text-gray-500">
-                            {roomTypeName} • {i18n.language === 'id' ? 'Lantai' : 'Floor'} {room.floor} • Rp {(room.pricePerDay || 0).toLocaleString('id-ID')}/{i18n.language === 'id' ? 'hari' : 'day'}
+                            {roomTypeName} • {t('rooms.floor', 'Lantai')} {room.floor} • Rp {(room.pricePerDay || 0).toLocaleString(i18n.language === 'id' ? 'id-ID' : 'en-US')}/{t('inpatients.perDay', 'hari')}
                           </p>
                         </div>
                         {isSelected && <Check className="w-4 h-4 text-indigo-600" />}
@@ -265,7 +265,7 @@ const CreateInpatientModal = ({ visit, isOpen, onClose, onSuccess }) => {
 
             {selectedRoom && (
               <p className="mt-1.5 text-xs text-indigo-800 font-medium bg-indigo-50 p-2 rounded-lg border border-indigo-200">
-                {i18n.language === 'id' ? 'Kapasitas' : 'Capacity'}: {selectedRoom.bedCapacity} Bed | {i18n.language === 'id' ? 'Tersedia' : 'Available'}: {selectedRoom.availableBeds || selectedRoom.bedCapacity} Bed | Rp {(selectedRoom.pricePerDay || 0).toLocaleString('id-ID')}/{i18n.language === 'id' ? 'hari' : 'day'}
+                {t('inpatients.capacity', 'Kapasitas')}: {selectedRoom.bedCapacity} Bed | {t('inpatients.available', 'Tersedia')}: {selectedRoom.availableBeds || selectedRoom.bedCapacity} Bed | Rp {(selectedRoom.pricePerDay || 0).toLocaleString(i18n.language === 'id' ? 'id-ID' : 'en-US')}/{t('inpatients.perDay', 'hari')}
               </p>
             )}
           </div>
@@ -282,7 +282,7 @@ const CreateInpatientModal = ({ visit, isOpen, onClose, onSuccess }) => {
                 onChange={(e) => setFormData({ ...formData, bedNumber: e.target.value })}
                 min="1"
                 max={selectedRoom?.bedCapacity || 99}
-                placeholder={selectedRoom ? `1 - ${selectedRoom.bedCapacity}` : (i18n.language === 'id' ? 'Pilih kamar' : 'Select room')}
+                placeholder={selectedRoom ? `1 - ${selectedRoom.bedCapacity}` : t('inpatients.selectRoomFirst', 'Pilih kamar terlebih dahulu')}
                 disabled={!formData.roomId}
                 className="w-full text-xs font-medium p-3 rounded-xl border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition-all disabled:bg-gray-100"
               />

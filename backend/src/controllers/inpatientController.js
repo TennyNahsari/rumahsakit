@@ -704,12 +704,19 @@ const getOccupancyHistory = async (req, res) => {
           room: {
             select: {
               roomNumber: true,
-              roomType: true
+              roomType: true,
+              pricePerDay: true
             }
           },
           doctor: {
             select: {
               name: true
+            }
+          },
+          billing: {
+            select: {
+              id: true,
+              status: true
             }
           }
         }
