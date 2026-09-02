@@ -95,6 +95,12 @@ const getVisits = async (req, res) => {
               name: true,
               department: true
             }
+          },
+          billings: {
+            select: {
+              id: true,
+              status: true
+            }
           }
         }
       }),

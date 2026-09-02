@@ -1,20 +1,26 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { inpatientService, roomService } from '../services'
-import { ArrowLeft, Save, Bed, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Save, Bed, AlertCircle, Search, Check, X, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const InpatientEdit = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams()
+  
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [occupancy, setOccupancy] = useState(null)
   const [rooms, setRooms] = useState([])
   const [selectedRoom, setSelectedRoom] = useState(null)
-  
+
+  // Room Autocomplete State
+  const [roomSearch, setRoomSearch] = useState('')
+  const [isRoomOpen, setIsRoomOpen] = useState(false)
+  const roomRef = useRef(null)
+
   const [formData, setFormData] = useState({
     roomId: '',
     bedNumber: '',
@@ -26,19 +32,30 @@ const InpatientEdit = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  // Close room dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (roomRef.current && !roomRef.current.contains(event.target)) {
+        setIsRoomOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const fetchData = async () => {
     try {
       setLoading(true)
       const [occupancyResponse, roomsResponse] = await Promise.all([
         inpatientService.getInpatient(id),
-        roomService.getRooms({ status: 'AVAILABLE' })
+        roomService.getRooms({ status: 'AVAILABLE', limit: 1000 })
       ])
 
       const occ = occupancyResponse.data?.occupancy || occupancyResponse.data
       setOccupancy(occ)
       
-      // Include current room in available rooms
-      const availableRooms = roomsResponse.data?.rooms || []
+      // Include current room in available rooms list if not already present
+      const availableRooms = roomsResponse.data?.rooms || roomsResponse.data || []
       if (occ.room && !availableRooms.find(r => r.id === occ.room.id)) {
         availableRooms.unshift(occ.room)
       }
@@ -51,8 +68,13 @@ const InpatientEdit = () => {
       })
 
       setSelectedRoom(occ.room)
+
+      if (occ.room) {
+        const roomTypeName = t(`rooms.types.${occ.room.roomType}`, occ.room.roomType)
+        setRoomSearch(`${occ.room.roomNumber} - ${occ.room.roomName || ''} (${roomTypeName})`)
+      }
     } catch (error) {
-      toast.error(t('inpatients.loadFailed'))
+      toast.error(t('inpatients.loadFailed', 'Gagal memuat data rawat inap'))
       console.error('Fetch data error:', error)
       navigate('/inpatients')
     } finally {
@@ -66,24 +88,51 @@ const InpatientEdit = () => {
       ...prev,
       [name]: value
     }))
+  }
 
-    // When room changes, update selected room
-    if (name === 'roomId') {
-      const room = rooms.find(r => r.id === parseInt(value))
-      setSelectedRoom(room)
-      // Reset bed number if changing rooms
-      if (room?.id !== occupancy?.room?.id) {
-        setFormData(prev => ({ ...prev, bedNumber: '' }))
+  // Room Autocomplete Helpers
+  const filteredRooms = rooms.filter(room => {
+    const query = roomSearch.toLowerCase().trim()
+    if (!query) return true
+    return (
+      room.roomNumber?.toLowerCase().includes(query) ||
+      room.roomName?.toLowerCase().includes(query) ||
+      room.roomType?.toLowerCase().includes(query) ||
+      (room.floor ? `lantai ${room.floor}` : '').includes(query)
+    )
+  })
+
+  const handleSelectRoom = (room) => {
+    setSelectedRoom(room)
+    setFormData(prev => {
+      const isSameRoom = room.id === occupancy?.room?.id
+      return {
+        ...prev,
+        roomId: room.id.toString(),
+        bedNumber: isSameRoom ? (occupancy?.bedNumber?.toString() || '') : ''
       }
-    }
+    })
+
+    const roomTypeName = t(`rooms.types.${room.roomType}`, room.roomType)
+    setRoomSearch(`${room.roomNumber} - ${room.roomName || ''} (${roomTypeName})`)
+    setIsRoomOpen(false)
+  }
+
+  const handleClearRoom = () => {
+    setSelectedRoom(null)
+    setFormData(prev => ({
+      ...prev,
+      roomId: '',
+      bedNumber: ''
+    }))
+    setRoomSearch('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Validation
     if (!formData.roomId) {
-      toast.error(t('inpatients.selectRoom'))
+      toast.error(t('inpatients.selectRoom', 'Silakan pilih kamar pengganti terlebih dahulu'))
       return
     }
 
@@ -97,10 +146,10 @@ const InpatientEdit = () => {
       }
 
       await inpatientService.updateOccupancy(id, updateData)
-      toast.success(t('inpatients.updateSuccess'))
+      toast.success(t('inpatients.updateSuccess', 'Kamar berhasil diperbarui'))
       navigate(`/inpatients/${id}`)
     } catch (error) {
-      toast.error(error.response?.data?.error || t('inpatients.updateFailed'))
+      toast.error(error.response?.data?.error || t('inpatients.updateFailed', 'Gagal memperbarui kamar rawat inap'))
     } finally {
       setSubmitting(false)
     }
@@ -118,12 +167,12 @@ const InpatientEdit = () => {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
-        <p className="text-gray-600">{t('inpatients.cannotEdit')}</p>
+        <p className="text-gray-600">{t('inpatients.cannotEdit', 'Rawat inap ini sudah selesai dan tidak dapat diubah.')}</p>
         <button
           onClick={() => navigate('/inpatients')}
-          className="mt-4 btn-primary"
+          className="mt-4 btn bg-primary-600 text-white hover:bg-primary-700"
         >
-          {t('common.back')}
+          {t('common.back', 'Kembali')}
         </button>
       </div>
     )
@@ -140,88 +189,149 @@ const InpatientEdit = () => {
       <div className="flex items-center space-x-4">
         <button
           onClick={() => navigate(`/inpatients/${id}`)}
-          className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          {t('common.back')}
+          {t('common.back', 'Kembali')}
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('inpatients.editOccupancy')}</h1>
-          <p className="text-gray-600">{occupancy.registrationNumber}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('inpatients.editOccupancy', 'Pindah Kamar / Ubah Rawat Inap')}</h1>
+          <p className="text-gray-600 font-mono text-sm">{occupancy.registrationNumber}</p>
         </div>
       </div>
 
       {/* Current Info */}
       <div className="card">
-        <h2 className="text-lg font-semibold mb-4">{t('inpatients.currentInfo')}</h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <h2 className="text-lg font-semibold mb-4">{t('inpatients.currentInfo', 'Informasi Rawat Inap Saat Ini')}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
-            <p className="text-gray-600">{t('inpatients.patient')}</p>
-            <p className="font-medium">{occupancy.patient?.name}</p>
-            <p className="text-gray-500">{occupancy.patient?.medicalRecordNo}</p>
+            <p className="text-gray-500 text-xs">{t('inpatients.patient', 'Pasien')}</p>
+            <p className="font-bold text-gray-900">{occupancy.patient?.name}</p>
+            <p className="text-gray-500 font-mono text-xs">{occupancy.patient?.medicalRecordNo}</p>
           </div>
           <div>
-            <p className="text-gray-600">{t('inpatients.currentRoom')}</p>
-            <p className="font-medium">
-              {occupancy.room?.roomNumber} - {t(`rooms.types.${occupancy.room?.roomType}`)}
+            <p className="text-gray-500 text-xs">{t('inpatients.currentRoom', 'Kamar Saat Ini')}</p>
+            <p className="font-bold text-gray-900">
+              Kamar {occupancy.room?.roomNumber} - {t(`rooms.types.${occupancy.room?.roomType}`, occupancy.room?.roomType)}
             </p>
-            <p className="text-gray-500">
-              Bed {occupancy.bedNumber || '-'} | Floor {occupancy.room?.floor}
+            <p className="text-gray-500 text-xs">
+              Bed {occupancy.bedNumber || '-'} | {i18n.language === 'id' ? 'Lantai' : 'Floor'} {occupancy.room?.floor}
             </p>
           </div>
           <div>
-            <p className="text-gray-600">{t('inpatients.doctor')}</p>
-            <p className="font-medium">{occupancy.doctor?.name}</p>
-            <p className="text-gray-500">{occupancy.doctor?.department}</p>
+            <p className="text-gray-500 text-xs">{t('inpatients.doctor', 'Dokter Penanggung Jawab')}</p>
+            <p className="font-bold text-gray-900">{occupancy.doctor?.name}</p>
+            <p className="text-gray-500 text-xs">{occupancy.doctor?.department}</p>
           </div>
           <div>
-            <p className="text-gray-600">{t('inpatients.lengthOfStay')}</p>
-            <p className="font-medium">{occupancy.currentDays || 1} {t('inpatients.days')}</p>
+            <p className="text-gray-500 text-xs">{t('inpatients.lengthOfStay', 'Lama Rawat')}</p>
+            <p className="font-bold text-gray-900">{occupancy.currentDays || 1} {t('inpatients.days', 'Hari')}</p>
           </div>
         </div>
       </div>
 
       {/* Edit Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="card">
+        <div className="card overflow-visible">
           <div className="flex items-center space-x-2 mb-4">
             <Bed className="w-5 h-5 text-primary-600" />
-            <h2 className="text-lg font-semibold">{t('inpatients.changeRoom')}</h2>
+            <h2 className="text-lg font-semibold">{t('inpatients.changeRoom', 'Pindah Kamar (Kamar Baru)')}</h2>
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label htmlFor="roomId" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('inpatients.newRoom')} <span className="text-red-500">*</span>
+            
+            {/* New Room Search Autocomplete */}
+            <div className="relative" ref={roomRef}>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('inpatients.newRoom', 'Pilih Kamar Baru')} <span className="text-red-500">*</span>
               </label>
-              <select
-                id="roomId"
-                name="roomId"
-                value={formData.roomId}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">{t('common.select')}</option>
-                {rooms.map(room => (
-                  <option key={room.id} value={room.id}>
-                    {room.roomNumber} - {room.roomName} ({t(`rooms.types.${room.roomType}`)}) - Floor {room.floor}
-                    {room.id === occupancy.room?.id ? ` (${t('inpatients.current')})` : ''}
-                  </option>
-                ))}
-              </select>
+
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={roomSearch}
+                  onFocus={() => setIsRoomOpen(true)}
+                  onChange={(e) => {
+                    setRoomSearch(e.target.value)
+                    setIsRoomOpen(true)
+                    if (formData.roomId) {
+                      setFormData(prev => ({ ...prev, roomId: '', bedNumber: '' }))
+                      setSelectedRoom(null)
+                    }
+                  }}
+                  placeholder={t('inpatients.searchRoomPlaceholder', 'Ketik untuk mencari kamar (No. Kamar, Nama, Tipe, Lantai)...')}
+                  className="input pl-9 pr-10 text-sm font-medium"
+                  required={!formData.roomId}
+                />
+
+                {formData.roomId ? (
+                  <button
+                    type="button"
+                    onClick={handleClearRoom}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                )}
+              </div>
+
+              {/* Room Dropdown Menu */}
+              {isRoomOpen && (
+                <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
+                  {filteredRooms.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500">
+                      {t('common.noDataFound', 'Kamar tidak ditemukan atau tidak tersedia')}
+                    </div>
+                  ) : (
+                    filteredRooms.map(room => {
+                      const isSelected = formData.roomId === room.id.toString()
+                      const isCurrentRoom = room.id === occupancy.room?.id
+                      const roomTypeName = t(`rooms.types.${room.roomType}`, room.roomType)
+                      
+                      return (
+                        <div
+                          key={room.id}
+                          onClick={() => handleSelectRoom(room)}
+                          className={`p-3 hover:bg-emerald-50/70 cursor-pointer transition-colors flex items-center justify-between ${
+                            isSelected ? 'bg-emerald-50 font-semibold' : ''
+                          }`}
+                        >
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                              <Bed className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Kamar {room.roomNumber} {room.roomName ? `- ${room.roomName}` : ''}</span>
+                              {isCurrentRoom && (
+                                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
+                                  {t('inpatients.current', 'Kamar Saat Ini')}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[11px] text-gray-500">
+                              {roomTypeName} • {i18n.language === 'id' ? 'Lantai' : 'Floor'} {room.floor} • Rp {(room.pricePerDay || 0).toLocaleString('id-ID')}/{i18n.language === 'id' ? 'hari' : 'day'}
+                            </p>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-emerald-600" />}
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+
               {selectedRoom && (
-                <p className="mt-1 text-sm text-gray-500">
-                  {t('rooms.bedCapacity')}: {selectedRoom.bedCapacity} | 
-                  {t('rooms.available')}: {selectedRoom.availableBeds || selectedRoom.bedCapacity} | 
-                  Rp {selectedRoom.pricePerDay?.toLocaleString('id-ID')}/day
+                <p className="mt-2 text-xs text-emerald-700 font-medium bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                  Kapasitas: {selectedRoom.bedCapacity} Bed | Tersedia: {selectedRoom.availableBeds || selectedRoom.bedCapacity} Bed | Rp {(selectedRoom.pricePerDay || 0).toLocaleString('id-ID')}/hari
                 </p>
               )}
             </div>
 
+            {/* Bed Number */}
             <div>
-              <label htmlFor="bedNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('inpatients.bedNumber')}
+              <label htmlFor="bedNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                {t('inpatients.bedNumber', 'Nomor Bed / Kasur Baru')}
               </label>
               <input
                 type="number"
@@ -231,18 +341,19 @@ const InpatientEdit = () => {
                 onChange={handleChange}
                 min="1"
                 max={selectedRoom?.bedCapacity || 99}
-                placeholder={selectedRoom ? `1-${selectedRoom.bedCapacity}` : ''}
+                placeholder={selectedRoom ? `1 - ${selectedRoom.bedCapacity}` : 'Pilih kamar terlebih dahulu'}
                 disabled={!formData.roomId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100"
+                className="input text-sm font-medium disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
-              <p className="mt-1 text-sm text-gray-500">
-                {t('inpatients.bedNumberHint')}
+              <p className="mt-1 text-xs text-gray-500">
+                {t('inpatients.bedNumberHint', 'Opsional: Nomor urut kasur di dalam kamar baru.')}
               </p>
             </div>
 
+            {/* Reason for Change Notes */}
             <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('inpatients.notes')}
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+                {t('inpatients.notes', 'Alasan Kepindahan / Catatan')}
               </label>
               <textarea
                 id="notes"
@@ -250,35 +361,36 @@ const InpatientEdit = () => {
                 value={formData.notes}
                 onChange={handleChange}
                 rows="3"
-                placeholder={t('inpatients.reasonForChange')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder={t('inpatients.reasonForChange', 'Ketik alasan pindah kamar atau catatan perawat...')}
+                className="input text-sm"
               />
             </div>
 
             {/* Price Comparison */}
             {isRoomChanged && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-blue-900 mb-2">
-                  {t('inpatients.priceComparison')}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+                <h3 className="text-sm font-bold text-blue-900">
+                  {t('inpatients.priceComparison', 'Perbandingan Tarif Kamar')}
                 </h3>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-blue-700">{t('inpatients.currentPrice')}</span>
-                    <span className="font-medium">Rp {currentRoomPrice.toLocaleString('id-ID')}/day</span>
+                    <span className="text-blue-700">{t('inpatients.currentPrice', 'Tarif Kamar Lama')}:</span>
+                    <span className="font-semibold">Rp {(currentRoomPrice || 0).toLocaleString('id-ID')}/hari</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-blue-700">{t('inpatients.newPrice')}</span>
-                    <span className="font-medium">Rp {newRoomPrice.toLocaleString('id-ID')}/day</span>
+                    <span className="text-blue-700">{t('inpatients.newPrice', 'Tarif Kamar Baru')}:</span>
+                    <span className="font-semibold">Rp {(newRoomPrice || 0).toLocaleString('id-ID')}/hari</span>
                   </div>
-                  <div className="flex justify-between border-t border-blue-300 pt-1">
-                    <span className="font-medium text-blue-900">{t('inpatients.difference')}</span>
-                    <span className={`font-bold ${priceDifference > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {priceDifference > 0 ? '+' : ''}Rp {priceDifference.toLocaleString('id-ID')}/day
+                  <div className="flex justify-between border-t border-blue-300 pt-1.5 text-sm">
+                    <span className="font-bold text-blue-900">{t('inpatients.difference', 'Selisih Tarif')}:</span>
+                    <span className={`font-bold ${priceDifference > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {priceDifference > 0 ? '+' : ''}Rp {(priceDifference || 0).toLocaleString('id-ID')}/hari
                     </span>
                   </div>
                 </div>
               </div>
             )}
+
           </div>
         </div>
 
@@ -287,25 +399,25 @@ const InpatientEdit = () => {
           <button
             type="button"
             onClick={() => navigate(`/inpatients/${id}`)}
-            className="btn-secondary"
+            className="btn bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
             disabled={submitting}
           >
-            {t('common.cancel')}
+            {t('common.cancel', 'Batal')}
           </button>
           <button
             type="submit"
             disabled={submitting || !isRoomChanged}
-            className="btn-primary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-primary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                {t('common.saving')}
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                {t('common.saving', 'Menyimpan...')}
               </>
             ) : (
               <>
                 <Save className="w-4 h-4 mr-2" />
-                {t('inpatients.saveChanges')}
+                {t('inpatients.saveChanges', 'Simpan Kepindahan Kamar')}
               </>
             )}
           </button>

@@ -30,6 +30,7 @@ import InpatientHistory from './pages/InpatientHistory'
 import Medicines from './pages/Medicines'
 import MedicineForm from './pages/MedicineForm'
 import MedicineEdit from './pages/MedicineEdit'
+import MedicineDetail from './pages/MedicineDetail'
 import Billing from './pages/Billing'
 import BillingForm from './pages/BillingForm'
 import BillingDetail from './pages/BillingDetail'
@@ -333,6 +334,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <MedicineEdit />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/medicines/:id" 
+              element={
+                <ProtectedRoute>
+                  <MedicineDetail />
                 </ProtectedRoute>
               } 
             />

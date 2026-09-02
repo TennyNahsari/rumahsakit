@@ -5,10 +5,19 @@ import { visitService } from '../services'
 import { 
   Calendar, Clock, User, Search, Download, Filter, Eye, Edit, Trash2, Plus, 
   Volume2, CheckCircle2, Play, SkipForward, Printer, Tv, RefreshCw, AlertCircle,
-  ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Zap
+  ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Zap, MessageCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThermalTicketModal from '../components/ThermalTicketModal'
+
+const formatWaNumber = (phone) => {
+  if (!phone) return ''
+  let cleaned = phone.replace(/[^0-9]/g, '')
+  if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.slice(1)
+  }
+  return cleaned
+}
 
 const Visits = () => {
   const { t, i18n } = useTranslation()
@@ -234,6 +243,7 @@ const Visits = () => {
     const matchesSearch = 
       visit.patient?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       visit.patient?.medicalRecordNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      visit.patient?.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       visit.doctor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (visit.queueNumberFormatted || '').toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -471,10 +481,33 @@ const Visits = () => {
                         </span>
                       </td>
 
-                      {/* Patient & RM */}
+                      {/* Patient & RM & WA */}
                       <td className="px-4 py-3.5">
-                        <p className="font-bold text-gray-900 text-xs">{visit.patient?.name}</p>
-                        <p className="text-[10px] font-mono text-gray-500">RM: {visit.patient?.medicalRecordNo || '-'}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-bold text-gray-900 text-xs">{visit.patient?.name}</p>
+                            <p className="text-[10px] font-mono text-gray-500">RM: {visit.patient?.medicalRecordNo || '-'}</p>
+                            {visit.patient?.phone && (
+                              <p className="text-[10px] font-mono text-emerald-700 font-medium flex items-center gap-1 mt-0.5">
+                                <span>📱 {visit.patient.phone}</span>
+                              </p>
+                            )}
+                          </div>
+                          {visit.patient?.phone && (
+                            <a
+                              href={`https://wa.me/${formatWaNumber(visit.patient.phone)}?text=${encodeURIComponent(
+                                `Halo ${visit.patient?.name || 'Pasien'}, kami dari Rumah Sakit mengenai antrean Anda (${queueNo}).`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Hubungi ${visit.patient?.name} via WhatsApp (${visit.patient.phone})`}
+                              className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-300 transition-all flex items-center space-x-1 font-bold text-[11px] shrink-0 shadow-sm group"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-emerald-600 group-hover:text-white" />
+                              <span className="text-[10px]">WA</span>
+                            </a>
+                          )}
+                        </div>
                       </td>
 
                       {/* Doctor & Department */}

@@ -148,6 +148,33 @@ const createBilling = async (req, res) => {
 
     const { patientId, visitId, items, subtotal, tax, discount, total } = req.body;
 
+    // Deduct medicine stock from batches if items contain medicineId and qty
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        if (item.medicineId && item.qty && parseInt(item.qty) > 0) {
+          const medId = parseInt(item.medicineId);
+          let remainingToDeduct = parseInt(item.qty);
+
+          const batches = await prisma.medicineBatch.findMany({
+            where: { medicineId: medId, stock: { gt: 0 } },
+            orderBy: { expiryDate: 'asc' }
+          });
+
+          for (const batch of batches) {
+            if (remainingToDeduct <= 0) break;
+
+            const deductAmount = Math.min(batch.stock, remainingToDeduct);
+            await prisma.medicineBatch.update({
+              where: { id: batch.id },
+              data: { stock: batch.stock - deductAmount }
+            });
+
+            remainingToDeduct -= deductAmount;
+          }
+        }
+      }
+    }
+
     const billing = await prisma.billing.create({
       data: {
         patientId: parseInt(patientId),
@@ -209,7 +236,35 @@ const updateBilling = async (req, res) => {
     }
 
     const updateData = {};
-    if (items !== undefined) updateData.items = items;
+    if (items !== undefined) {
+      updateData.items = items;
+      // Deduct medicine stock if items contain medicineId & qty
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (item.medicineId && item.qty && parseInt(item.qty) > 0) {
+            const medId = parseInt(item.medicineId);
+            let remainingToDeduct = parseInt(item.qty);
+
+            const batches = await prisma.medicineBatch.findMany({
+              where: { medicineId: medId, stock: { gt: 0 } },
+              orderBy: { expiryDate: 'asc' }
+            });
+
+            for (const batch of batches) {
+              if (remainingToDeduct <= 0) break;
+
+              const deductAmount = Math.min(batch.stock, remainingToDeduct);
+              await prisma.medicineBatch.update({
+                where: { id: batch.id },
+                data: { stock: batch.stock - deductAmount }
+              });
+
+              remainingToDeduct -= deductAmount;
+            }
+          }
+        }
+      }
+    }
     if (subtotal !== undefined) updateData.subtotal = parseFloat(subtotal);
     if (tax !== undefined) updateData.tax = parseFloat(tax);
     if (discount !== undefined) updateData.discount = parseFloat(discount);
